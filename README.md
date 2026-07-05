@@ -34,7 +34,9 @@ security-log-analyzer/
 │   ├── parser.py
 │   ├── detector.py
 │   └── reporter.py
-└── README.md
+├── .gitignore
+├── README.md
+└── requirements.txt
 ```
 
 ## Example Log Input
