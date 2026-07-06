@@ -11,6 +11,8 @@ A Python-based mini SOC tool that analyzes authentication logs and detects suspi
 - Assigns risk levels: LOW, MEDIUM, HIGH
 - Detects possible successful brute-force attempts
 - Generates a CSV security report
+- Stores detected incidents in a SQLite database
+- Displays saved incidents from the database
 
 ## Detection Logic
 
@@ -33,7 +35,8 @@ security-log-analyzer/
 │   ├── main.py
 │   ├── parser.py
 │   ├── detector.py
-│   └── reporter.py
+│   ├── reporter.py
+│   └── database.py
 ├── .gitignore
 ├── README.md
 └── requirements.txt
@@ -53,9 +56,14 @@ security-log-analyzer/
 ```txt
 Suspicious IPs:
 192.168.1.20 -> 3 failed attempts -> Users: admin -> Risk: MEDIUM
+172.16.0.8 -> 4 failed attempts -> Users: root -> Risk: MEDIUM
 
 Success-after-failures alerts:
 192.168.1.20 -> User: admin -> 3 failed attempts before success -> Possible successful brute-force
+
+Saved incidents in database:
+1 | 192.168.1.20 | 3 failed attempts | Users: admin | Risk: MEDIUM | Alert: Possible successful brute-force
+2 | 172.16.0.8 | 4 failed attempts | Users: root | Risk: MEDIUM | Alert:
 ```
 
 ## CSV Report Example
@@ -65,6 +73,27 @@ IP Address,Failed Attempts,Targeted Users,Risk Level,Alert
 192.168.1.20,3,admin,MEDIUM,Possible successful brute-force
 172.16.0.8,4,root,MEDIUM,
 ```
+
+## SQLite Incident Storage
+
+Version 2 includes SQLite support for storing detected incidents locally.
+
+The tool creates a local database file:
+
+```txt
+security_logs.db
+```
+
+The database contains an `incidents` table with:
+
+- IP address
+- Failed attempts
+- Targeted users
+- Risk level
+- Alert message
+- Creation timestamp
+
+The database file is ignored by Git using `.gitignore`, because it is generated locally when the tool runs.
 
 ## How to Run
 
@@ -83,10 +112,11 @@ py src/main.py
 ## Technologies Used
 
 - Python
+- SQLite
 - CSV
 - Log parsing
 - Basic detection rules
 
 ## Purpose
 
-This project was created as a cybersecurity portfolio project to demonstrate basic SOC-style log analysis, brute-force detection, risk scoring, and report generation.
+This project was created as a cybersecurity portfolio project to demonstrate basic SOC-style log analysis, brute-force detection, risk scoring, incident storage, and report generation.
