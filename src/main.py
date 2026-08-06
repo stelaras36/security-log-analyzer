@@ -44,7 +44,8 @@ def print_saved_incidents(incidents):
         mitre_technique_id = incident[7]
         mitre_technique_name = incident[8]
         mitre_tactic = incident[9]
-        created_at = incident[10]
+        status = incident[10]
+        created_at = incident[11]
 
         print(
             f"{incident_id} | "
@@ -52,6 +53,7 @@ def print_saved_incidents(incidents):
             f"{failed_attempts} failed attempts | "
             f"Users: {targeted_users} | "
             f"Risk: {risk_level} | "
+            f"Status: {status} | "
             f"Alert: {alert or 'N/A'} | "
             f"Detection: {detection_type or 'N/A'} | "
             f"MITRE: {mitre_technique_id or 'N/A'} "

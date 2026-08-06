@@ -3,10 +3,18 @@ import sqlite3
 
 DATABASE_FILE = "security_logs.db"
 
+DEFAULT_INCIDENT_STATUS = "NEW"
+
+VALID_INCIDENT_STATUSES = {
+    "NEW",
+    "INVESTIGATING",
+    "RESOLVED",
+    "FALSE_POSITIVE"
+}
+
 
 def create_connection():
-    connection = sqlite3.connect(DATABASE_FILE)
-    return connection
+    return sqlite3.connect(DATABASE_FILE)
 
 
 def create_incidents_table():
@@ -25,6 +33,7 @@ def create_incidents_table():
             mitre_technique_id TEXT,
             mitre_technique_name TEXT,
             mitre_tactic TEXT,
+            status TEXT NOT NULL DEFAULT 'NEW',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -40,14 +49,15 @@ def create_incidents_table():
         "detection_type": "TEXT",
         "mitre_technique_id": "TEXT",
         "mitre_technique_name": "TEXT",
-        "mitre_tactic": "TEXT"
+        "mitre_tactic": "TEXT",
+        "status": "TEXT NOT NULL DEFAULT 'NEW'"
     }
 
-    for column_name, column_type in new_columns.items():
+    for column_name, column_definition in new_columns.items():
         if column_name not in existing_columns:
             cursor.execute(
                 f"ALTER TABLE incidents "
-                f"ADD COLUMN {column_name} {column_type}"
+                f"ADD COLUMN {column_name} {column_definition}"
             )
 
     connection.commit()
@@ -193,9 +203,10 @@ def save_incidents(
                 detection_type,
                 mitre_technique_id,
                 mitre_technique_name,
-                mitre_tactic
+                mitre_tactic,
+                status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             ip,
             attempts,
@@ -205,7 +216,8 @@ def save_incidents(
             detection_type,
             mitre_technique_id,
             mitre_technique_name,
-            mitre_tactic
+            mitre_tactic,
+            DEFAULT_INCIDENT_STATUS
         ))
 
     connection.commit()
@@ -228,6 +240,7 @@ def get_all_incidents():
             mitre_technique_id,
             mitre_technique_name,
             mitre_tactic,
+            status,
             created_at
         FROM incidents
         ORDER BY id ASC
