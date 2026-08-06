@@ -3,11 +3,13 @@ from detector import (
     count_failed_attempts_by_ip,
     get_targeted_users_by_ip,
     detect_success_after_failures,
+    detect_brute_force_attempts,
     calculate_risk
 )
 from reporter import (
     print_suspicious_ips,
     print_success_after_failures_alerts,
+    print_brute_force_alerts,
     generate_csv_report
 )
 from database import (
@@ -36,8 +38,12 @@ def print_saved_incidents(incidents):
         created_at = incident[6]
 
         print(
-            f"{incident_id} | {ip_address} | {failed_attempts} failed attempts | "
-            f"Users: {targeted_users} | Risk: {risk_level} | Alert: {alert} | {created_at}"
+            f"{incident_id} | {ip_address} | "
+            f"{failed_attempts} failed attempts | "
+            f"Users: {targeted_users} | "
+            f"Risk: {risk_level} | "
+            f"Alert: {alert} | "
+            f"{created_at}"
         )
 
 
@@ -54,8 +60,13 @@ def main():
     ip_counter = count_failed_attempts_by_ip(parsed_logs)
     targeted_users = get_targeted_users_by_ip(parsed_logs)
     success_alerts = detect_success_after_failures(parsed_logs)
+    brute_force_alerts = detect_brute_force_attempts(parsed_logs)
 
-    failed_logins_count = sum(1 for log in parsed_logs if log["event_type"] == "FAILED")
+    failed_logins_count = sum(
+        1
+        for log in parsed_logs
+        if log["event_type"] == "FAILED"
+    )
 
     print(f"Total log lines found: {len(logs)}")
     print(f"Failed login attempts found: {failed_logins_count}")
@@ -63,11 +74,22 @@ def main():
 
     print_suspicious_ips(ip_counter, targeted_users)
     print_success_after_failures_alerts(success_alerts)
+    print_brute_force_alerts(brute_force_alerts)
 
-    generate_csv_report(ip_counter, targeted_users, success_alerts)
+    generate_csv_report(
+        ip_counter,
+        targeted_users,
+        success_alerts
+    )
 
     clear_incidents()
-    save_incidents(ip_counter, targeted_users, success_alerts, calculate_risk)
+    save_incidents(
+    ip_counter,
+    targeted_users,
+    success_alerts,
+    brute_force_alerts,
+    calculate_risk
+)
 
     incidents = get_all_incidents()
     print_saved_incidents(incidents)

@@ -40,20 +40,36 @@ def clear_incidents():
     connection.close()
 
 
-def save_incidents(ip_counter, targeted_users, success_alerts, calculate_risk):
+def save_incidents(
+    ip_counter,
+    targeted_users,
+    success_alerts,
+    brute_force_alerts,
+    calculate_risk
+):
     connection = create_connection()
     cursor = connection.cursor()
 
     for ip, attempts in ip_counter.items():
         risk = calculate_risk(attempts)
 
-        if risk == "MEDIUM" or risk == "HIGH":
-            users = ", ".join(targeted_users[ip])
-            alert_text = ""
+        if risk in {"MEDIUM", "HIGH"}:
+            users = ", ".join(sorted(targeted_users[ip]))
+            alert_messages = []
 
             for alert in success_alerts:
                 if alert["ip"] == ip:
-                    alert_text = alert["alert"]
+                    alert_messages.append(alert["alert"])
+
+            for alert in brute_force_alerts:
+                if alert["ip"] == ip:
+                    alert_messages.append(
+                        f"Brute-force detected: "
+                        f"{alert['attempts']} failed attempts "
+                        f"within 5 minutes"
+                    )
+
+            alert_text = " | ".join(alert_messages)
 
             cursor.execute("""
                 INSERT INTO incidents (
@@ -64,7 +80,13 @@ def save_incidents(ip_counter, targeted_users, success_alerts, calculate_risk):
                     alert
                 )
                 VALUES (?, ?, ?, ?, ?)
-            """, (ip, attempts, users, risk, alert_text))
+            """, (
+                ip,
+                attempts,
+                users,
+                risk,
+                alert_text
+            ))
 
     connection.commit()
     connection.close()
