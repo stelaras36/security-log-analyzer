@@ -4,12 +4,14 @@ from detector import (
     get_targeted_users_by_ip,
     detect_success_after_failures,
     detect_brute_force_attempts,
+    detect_password_spraying,
     calculate_risk
 )
 from reporter import (
     print_suspicious_ips,
     print_success_after_failures_alerts,
     print_brute_force_alerts,
+    print_password_spray_alerts,
     generate_csv_report
 )
 from database import (
@@ -61,6 +63,7 @@ def main():
     targeted_users = get_targeted_users_by_ip(parsed_logs)
     success_alerts = detect_success_after_failures(parsed_logs)
     brute_force_alerts = detect_brute_force_attempts(parsed_logs)
+    password_spray_alerts = detect_password_spraying(parsed_logs)
 
     failed_logins_count = sum(
         1
@@ -75,6 +78,7 @@ def main():
     print_suspicious_ips(ip_counter, targeted_users)
     print_success_after_failures_alerts(success_alerts)
     print_brute_force_alerts(brute_force_alerts)
+    print_password_spray_alerts(password_spray_alerts)
 
     generate_csv_report(
         ip_counter,
@@ -88,6 +92,7 @@ def main():
     targeted_users,
     success_alerts,
     brute_force_alerts,
+    password_spray_alerts,
     calculate_risk
 )
 

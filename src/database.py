@@ -45,6 +45,7 @@ def save_incidents(
     targeted_users,
     success_alerts,
     brute_force_alerts,
+    password_spray_alerts,
     calculate_risk
 ):
     connection = create_connection()
@@ -68,6 +69,20 @@ def save_incidents(
                         f"{alert['attempts']} failed attempts "
                         f"within 5 minutes"
                     )
+
+                    if alert["severity"] == "HIGH":
+                        risk = "HIGH"
+
+            for alert in password_spray_alerts:
+                if alert["ip"] == ip:
+                    alert_messages.append(
+                        f"Password spraying detected: "
+                        f"{alert['user_count']} targeted users "
+                        f"within 5 minutes"
+                    )
+
+                    if alert["severity"] == "HIGH":
+                        risk = "HIGH"
 
             alert_text = " | ".join(alert_messages)
 

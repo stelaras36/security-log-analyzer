@@ -1,7 +1,11 @@
 import csv
 import os
 
-from detector import calculate_risk
+from detector import (
+    calculate_risk,
+    BRUTE_FORCE_WINDOW_MINUTES,
+    PASSWORD_SPRAY_WINDOW_MINUTES
+)
 
 
 REPORT_FILE = "reports/suspicious_report.csv"
@@ -55,7 +59,28 @@ def print_brute_force_alerts(alerts):
     for alert in alerts:
         print(
             f"{alert['ip']} -> User: {alert['user']} -> "
-            f"{alert['attempts']} failed attempts within 5 minutes -> "
+            f"{alert['attempts']} failed attempts within "
+            f"{BRUTE_FORCE_WINDOW_MINUTES} minutes -> "
+            f"Severity: {alert['severity']}"
+        )
+
+
+def print_password_spray_alerts(alerts):
+    print()
+    print("Password spraying detection alerts:")
+
+    if not alerts:
+        print("No password spraying attacks detected.")
+        return
+
+    for alert in alerts:
+        users = ", ".join(alert["users"])
+
+        print(
+            f"{alert['ip']} -> "
+            f"{alert['user_count']} targeted users: {users} -> "
+            f"{alert['attempts']} failed attempts within "
+            f"{PASSWORD_SPRAY_WINDOW_MINUTES} minutes -> "
             f"Severity: {alert['severity']}"
         )
 
@@ -63,7 +88,12 @@ def print_brute_force_alerts(alerts):
 def generate_csv_report(ip_counter, targeted_users, success_alerts):
     os.makedirs("reports", exist_ok=True)
 
-    with open(REPORT_FILE, "w", newline="", encoding="utf-8") as csvfile:
+    with open(
+        REPORT_FILE,
+        "w",
+        newline="",
+        encoding="utf-8"
+    ) as csvfile:
         writer = csv.writer(csvfile)
 
         writer.writerow([

@@ -5,6 +5,9 @@ from datetime import timedelta
 BRUTE_FORCE_THRESHOLD = 5
 BRUTE_FORCE_WINDOW_MINUTES = 5
 
+PASSWORD_SPRAY_USER_THRESHOLD = 4
+PASSWORD_SPRAY_WINDOW_MINUTES = 5
+
 PRIVILEGED_USERS = {
     "admin",
     "administrator",
@@ -116,6 +119,72 @@ def detect_brute_force_attempts(parsed_logs):
                     "severity": (
                         "HIGH"
                         if user.lower() in PRIVILEGED_USERS
+                        else "MEDIUM"
+                    )
+                })
+                break
+
+    return alerts
+
+
+def detect_password_spraying(parsed_logs):
+    failed_attempts_by_ip = defaultdict(list)
+    alerts = []
+
+    for log in parsed_logs:
+        if log["event_type"] != "FAILED":
+            continue
+
+        ip = log["ip"]
+        user = log["user"]
+        timestamp = log["timestamp"]
+
+        if not ip or not user or not timestamp:
+            continue
+
+        failed_attempts_by_ip[ip].append({
+            "user": user,
+            "timestamp": timestamp
+        })
+
+    for ip, attempts in failed_attempts_by_ip.items():
+        attempts.sort(key=lambda item: item["timestamp"])
+
+        for start_index, start_attempt in enumerate(attempts):
+            start_time = start_attempt["timestamp"]
+
+            window_end = start_time + timedelta(
+                minutes=PASSWORD_SPRAY_WINDOW_MINUTES
+            )
+
+            attempts_in_window = [
+                attempt
+                for attempt in attempts[start_index:]
+                if attempt["timestamp"] <= window_end
+            ]
+
+            targeted_users = {
+                attempt["user"]
+                for attempt in attempts_in_window
+            }
+
+            if len(targeted_users) >= PASSWORD_SPRAY_USER_THRESHOLD:
+                privileged_targeted = any(
+                    user.lower() in PRIVILEGED_USERS
+                    for user in targeted_users
+                )
+
+                alerts.append({
+                    "type": "PASSWORD_SPRAYING",
+                    "ip": ip,
+                    "users": sorted(targeted_users),
+                    "user_count": len(targeted_users),
+                    "attempts": len(attempts_in_window),
+                    "start_time": start_time,
+                    "end_time": attempts_in_window[-1]["timestamp"],
+                    "severity": (
+                        "HIGH"
+                        if privileged_targeted
                         else "MEDIUM"
                     )
                 })
