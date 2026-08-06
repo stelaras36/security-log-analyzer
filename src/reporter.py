@@ -61,7 +61,10 @@ def print_brute_force_alerts(alerts):
             f"{alert['ip']} -> User: {alert['user']} -> "
             f"{alert['attempts']} failed attempts within "
             f"{BRUTE_FORCE_WINDOW_MINUTES} minutes -> "
-            f"Severity: {alert['severity']}"
+            f"Severity: {alert['severity']} -> "
+            f"MITRE ATT&CK: {alert['mitre_technique_id']} "
+            f"({alert['mitre_technique_name']}) -> "
+            f"Tactic: {alert['mitre_tactic']}"
         )
 
 
@@ -81,11 +84,18 @@ def print_password_spray_alerts(alerts):
             f"{alert['user_count']} targeted users: {users} -> "
             f"{alert['attempts']} failed attempts within "
             f"{PASSWORD_SPRAY_WINDOW_MINUTES} minutes -> "
-            f"Severity: {alert['severity']}"
+            f"Severity: {alert['severity']} -> "
+            f"MITRE ATT&CK: {alert['mitre_technique_id']} "
+            f"({alert['mitre_technique_name']}) -> "
+            f"Tactic: {alert['mitre_tactic']}"
         )
 
 
-def generate_csv_report(ip_counter, targeted_users, success_alerts):
+def generate_csv_report(
+    ip_counter,
+    targeted_users,
+    success_alerts
+):
     os.makedirs("reports", exist_ok=True)
 
     with open(

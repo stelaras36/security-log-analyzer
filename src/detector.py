@@ -14,6 +14,18 @@ PRIVILEGED_USERS = {
     "root"
 }
 
+MITRE_BRUTE_FORCE = {
+    "technique_id": "T1110",
+    "technique_name": "Brute Force",
+    "tactic": "Credential Access"
+}
+
+MITRE_PASSWORD_SPRAYING = {
+    "technique_id": "T1110.003",
+    "technique_name": "Password Spraying",
+    "tactic": "Credential Access"
+}
+
 
 def count_failed_attempts_by_ip(parsed_logs):
     ip_counter = defaultdict(int)
@@ -120,7 +132,14 @@ def detect_brute_force_attempts(parsed_logs):
                         "HIGH"
                         if user.lower() in PRIVILEGED_USERS
                         else "MEDIUM"
-                    )
+                    ),
+                    "mitre_technique_id": (
+                        MITRE_BRUTE_FORCE["technique_id"]
+                    ),
+                    "mitre_technique_name": (
+                        MITRE_BRUTE_FORCE["technique_name"]
+                    ),
+                    "mitre_tactic": MITRE_BRUTE_FORCE["tactic"]
                 })
                 break
 
@@ -186,7 +205,14 @@ def detect_password_spraying(parsed_logs):
                         "HIGH"
                         if privileged_targeted
                         else "MEDIUM"
-                    )
+                    ),
+                    "mitre_technique_id": (
+                        MITRE_PASSWORD_SPRAYING["technique_id"]
+                    ),
+                    "mitre_technique_name": (
+                        MITRE_PASSWORD_SPRAYING["technique_name"]
+                    ),
+                    "mitre_tactic": MITRE_PASSWORD_SPRAYING["tactic"]
                 })
                 break
 

@@ -1,4 +1,5 @@
 from parser import read_log_file, parse_logs
+
 from detector import (
     count_failed_attempts_by_ip,
     get_targeted_users_by_ip,
@@ -7,6 +8,7 @@ from detector import (
     detect_password_spraying,
     calculate_risk
 )
+
 from reporter import (
     print_suspicious_ips,
     print_success_after_failures_alerts,
@@ -14,6 +16,7 @@ from reporter import (
     print_password_spray_alerts,
     generate_csv_report
 )
+
 from database import (
     create_incidents_table,
     clear_incidents,
@@ -37,14 +40,23 @@ def print_saved_incidents(incidents):
         targeted_users = incident[3]
         risk_level = incident[4]
         alert = incident[5]
-        created_at = incident[6]
+        detection_type = incident[6]
+        mitre_technique_id = incident[7]
+        mitre_technique_name = incident[8]
+        mitre_tactic = incident[9]
+        created_at = incident[10]
 
         print(
-            f"{incident_id} | {ip_address} | "
+            f"{incident_id} | "
+            f"{ip_address} | "
             f"{failed_attempts} failed attempts | "
             f"Users: {targeted_users} | "
             f"Risk: {risk_level} | "
-            f"Alert: {alert} | "
+            f"Alert: {alert or 'N/A'} | "
+            f"Detection: {detection_type or 'N/A'} | "
+            f"MITRE: {mitre_technique_id or 'N/A'} "
+            f"({mitre_technique_name or 'N/A'}) | "
+            f"Tactic: {mitre_tactic or 'N/A'} | "
             f"{created_at}"
         )
 
@@ -61,6 +73,7 @@ def main():
 
     ip_counter = count_failed_attempts_by_ip(parsed_logs)
     targeted_users = get_targeted_users_by_ip(parsed_logs)
+
     success_alerts = detect_success_after_failures(parsed_logs)
     brute_force_alerts = detect_brute_force_attempts(parsed_logs)
     password_spray_alerts = detect_password_spraying(parsed_logs)
@@ -75,10 +88,22 @@ def main():
     print(f"Failed login attempts found: {failed_logins_count}")
     print()
 
-    print_suspicious_ips(ip_counter, targeted_users)
-    print_success_after_failures_alerts(success_alerts)
-    print_brute_force_alerts(brute_force_alerts)
-    print_password_spray_alerts(password_spray_alerts)
+    print_suspicious_ips(
+        ip_counter,
+        targeted_users
+    )
+
+    print_success_after_failures_alerts(
+        success_alerts
+    )
+
+    print_brute_force_alerts(
+        brute_force_alerts
+    )
+
+    print_password_spray_alerts(
+        password_spray_alerts
+    )
 
     generate_csv_report(
         ip_counter,
@@ -87,21 +112,28 @@ def main():
     )
 
     clear_incidents()
+
     save_incidents(
-    ip_counter,
-    targeted_users,
-    success_alerts,
-    brute_force_alerts,
-    password_spray_alerts,
-    calculate_risk
-)
+        ip_counter,
+        targeted_users,
+        success_alerts,
+        brute_force_alerts,
+        password_spray_alerts,
+        calculate_risk
+    )
 
     incidents = get_all_incidents()
     print_saved_incidents(incidents)
 
     print()
-    print("CSV report generated: reports/suspicious_report.csv")
-    print("Incidents saved to SQLite database: security_logs.db")
+    print(
+        "CSV report generated: "
+        "reports/suspicious_report.csv"
+    )
+    print(
+        "Incidents saved to SQLite database: "
+        "security_logs.db"
+    )
 
 
 if __name__ == "__main__":
