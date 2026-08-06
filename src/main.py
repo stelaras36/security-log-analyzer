@@ -19,9 +19,9 @@ from reporter import (
 
 from database import (
     create_incidents_table,
-    clear_incidents,
     save_incidents,
-    get_all_incidents
+    get_all_incidents,
+    update_incident_status
 )
 
 
@@ -112,8 +112,6 @@ def main():
         targeted_users,
         success_alerts
     )
-
-    clear_incidents()
 
     save_incidents(
         ip_counter,

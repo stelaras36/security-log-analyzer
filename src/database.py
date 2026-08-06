@@ -83,6 +83,28 @@ def add_unique_value(values, value):
         values.append(value)
 
 
+def incident_exists(
+    cursor,
+    ip_address,
+    detection_type,
+    alert_text
+):
+    cursor.execute("""
+        SELECT id
+        FROM incidents
+        WHERE ip_address = ?
+          AND COALESCE(detection_type, '') = ?
+          AND COALESCE(alert, '') = ?
+        LIMIT 1
+    """, (
+        ip_address,
+        detection_type,
+        alert_text
+    ))
+
+    return cursor.fetchone() is not None
+
+
 def save_incidents(
     ip_counter,
     targeted_users,
@@ -193,6 +215,14 @@ def save_incidents(
         mitre_technique_name = " | ".join(mitre_names)
         mitre_tactic = " | ".join(mitre_tactics)
 
+        if incident_exists(
+            cursor,
+            ip,
+            detection_type,
+            alert_text
+        ):
+            continue
+
         cursor.execute("""
             INSERT INTO incidents (
                 ip_address,
@@ -251,3 +281,31 @@ def get_all_incidents():
     connection.close()
 
     return incidents
+
+
+def update_incident_status(incident_id, new_status):
+    normalized_status = new_status.strip().upper()
+
+    if normalized_status not in VALID_INCIDENT_STATUSES:
+        raise ValueError(
+            f"Invalid incident status: {new_status}"
+        )
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE incidents
+        SET status = ?
+        WHERE id = ?
+    """, (
+        normalized_status,
+        incident_id
+    ))
+
+    incident_found = cursor.rowcount > 0
+
+    connection.commit()
+    connection.close()
+
+    return incident_found
