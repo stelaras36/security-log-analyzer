@@ -113,11 +113,27 @@ def create_incident_notes_table():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             incident_id INTEGER NOT NULL,
             note TEXT NOT NULL,
+            analyst TEXT NOT NULL DEFAULT 'system',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (incident_id)
                 REFERENCES incidents(id)
         )
     """)
+
+    cursor.execute(
+        "PRAGMA table_info(incident_notes)"
+    )
+
+    existing_columns = {
+        column[1]
+        for column in cursor.fetchall()
+    }
+
+    if "analyst" not in existing_columns:
+        cursor.execute("""
+            ALTER TABLE incident_notes
+            ADD COLUMN analyst TEXT NOT NULL DEFAULT 'system'
+        """)
 
     connection.commit()
     connection.close()
@@ -487,12 +503,17 @@ def get_incident_status_history(incident_id):
 
 def add_incident_note(
     incident_id,
-    note
+    note,
+    analyst="system"
 ):
     cleaned_note = note.strip()
+    analyst_name = analyst.strip()
 
     if not cleaned_note:
         return False
+
+    if not analyst_name:
+        analyst_name = "system"
 
     connection = create_connection()
     cursor = connection.cursor()
@@ -512,12 +533,14 @@ def add_incident_note(
     cursor.execute("""
         INSERT INTO incident_notes (
             incident_id,
-            note
+            note,
+            analyst
         )
-        VALUES (?, ?)
+        VALUES (?, ?, ?)
     """, (
         incident_id,
-        cleaned_note
+        cleaned_note,
+        analyst_name
     ))
 
     cursor.execute("""
@@ -543,6 +566,7 @@ def get_incident_notes(incident_id):
             id,
             incident_id,
             note,
+            analyst,
             created_at
         FROM incident_notes
         WHERE incident_id = ?

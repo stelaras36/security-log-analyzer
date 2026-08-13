@@ -68,11 +68,13 @@ def print_incident_notes(incident_id):
     for note_entry in notes:
         note_id = note_entry[0]
         note = note_entry[2]
-        created_at = note_entry[3]
+        analyst = note_entry[3]
+        created_at = note_entry[4]
 
         print(
             f"      Note #{note_id} | "
             f"{note} | "
+            f"Analyst: {analyst} | "
             f"{created_at}"
         )
 
