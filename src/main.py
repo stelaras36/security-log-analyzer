@@ -8,6 +8,7 @@ from detector import (
     detect_password_spraying,
     detect_credential_stuffing,
     detect_multiple_account_targeting,
+    detect_anomalous_login_bursts,
     calculate_risk
 )
 
@@ -18,6 +19,7 @@ from reporter import (
     print_password_spray_alerts,
     print_credential_stuffing_alerts,
     print_multiple_account_targeting_alerts,
+    print_anomalous_login_burst_alerts,
     generate_csv_report
 )
 
@@ -176,6 +178,12 @@ def main():
         )
     )
 
+    anomalous_login_burst_alerts = (
+        detect_anomalous_login_bursts(
+            parsed_logs
+        )
+    )
+
     failed_logins_count = sum(
         1
         for log in parsed_logs
@@ -219,6 +227,10 @@ def main():
         multiple_account_targeting_alerts
     )
 
+    print_anomalous_login_burst_alerts(
+        anomalous_login_burst_alerts
+    )
+
     generate_csv_report(
         ip_counter,
         targeted_users,
@@ -233,6 +245,7 @@ def main():
         password_spray_alerts,
         credential_stuffing_alerts,
         multiple_account_targeting_alerts,
+        anomalous_login_burst_alerts,
         calculate_risk
     )
 

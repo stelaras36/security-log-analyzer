@@ -7,7 +7,8 @@ from detector import (
     SUCCESS_AFTER_FAILURES_WINDOW_MINUTES,
     PASSWORD_SPRAY_WINDOW_MINUTES,
     CREDENTIAL_STUFFING_WINDOW_MINUTES,
-    MULTI_ACCOUNT_TARGET_WINDOW_MINUTES
+    MULTI_ACCOUNT_TARGET_WINDOW_MINUTES,
+    ANOMALOUS_LOGIN_BURST_WINDOW_MINUTES
 )
 
 
@@ -170,6 +171,36 @@ def print_multiple_account_targeting_alerts(alerts):
             f"{users} -> "
             f"{alert['attempts']} failed attempts within "
             f"{MULTI_ACCOUNT_TARGET_WINDOW_MINUTES} minutes -> "
+            f"Severity: {alert['severity']} -> "
+            f"MITRE ATT&CK: "
+            f"{alert['mitre_technique_id']} "
+            f"({alert['mitre_technique_name']}) -> "
+            f"Tactic: {alert['mitre_tactic']}"
+        )
+
+
+def print_anomalous_login_burst_alerts(alerts):
+    print()
+    print("Anomalous login burst detection alerts:")
+
+    if not alerts:
+        print(
+            "No anomalous login bursts detected."
+        )
+        return
+
+    for alert in alerts:
+        users = ", ".join(
+            alert["users"]
+        )
+
+        print(
+            f"{alert['ip']} -> "
+            f"{alert['events']} login events within "
+            f"{ANOMALOUS_LOGIN_BURST_WINDOW_MINUTES} minute(s) -> "
+            f"{alert['failed_attempts']} failed -> "
+            f"{alert['successful_logins']} successful -> "
+            f"Users: {users} -> "
             f"Severity: {alert['severity']} -> "
             f"MITRE ATT&CK: "
             f"{alert['mitre_technique_id']} "

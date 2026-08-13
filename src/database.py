@@ -189,6 +189,7 @@ def save_incidents(
     password_spray_alerts,
     credential_stuffing_alerts,
     multiple_account_targeting_alerts,
+    anomalous_login_burst_alerts,
     calculate_risk
 ):
     connection = create_connection()
@@ -363,6 +364,44 @@ def save_incidents(
                     f"{alert['user_count']} targeted users "
                     f"with {alert['attempts']} failed attempts "
                     f"within 10 minutes"
+                )
+            )
+
+            add_unique_value(
+                detection_types,
+                alert["type"]
+            )
+
+            add_unique_value(
+                mitre_ids,
+                alert["mitre_technique_id"]
+            )
+
+            add_unique_value(
+                mitre_names,
+                alert["mitre_technique_name"]
+            )
+
+            add_unique_value(
+                mitre_tactics,
+                alert["mitre_tactic"]
+            )
+
+            if alert["severity"] == "HIGH":
+                risk = "HIGH"
+
+        for alert in anomalous_login_burst_alerts:
+            if alert["ip"] != ip:
+                continue
+
+            add_unique_value(
+                alert_messages,
+                (
+                    f"Anomalous login burst detected: "
+                    f"{alert['events']} login events "
+                    f"within 1 minute "
+                    f"({alert['failed_attempts']} failed, "
+                    f"{alert['successful_logins']} successful)"
                 )
             )
 

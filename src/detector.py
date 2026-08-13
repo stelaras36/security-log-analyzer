@@ -18,6 +18,9 @@ CREDENTIAL_STUFFING_WINDOW_MINUTES = 10
 MULTI_ACCOUNT_TARGET_USER_THRESHOLD = 3
 MULTI_ACCOUNT_TARGET_WINDOW_MINUTES = 10
 
+ANOMALOUS_LOGIN_BURST_THRESHOLD = 5
+ANOMALOUS_LOGIN_BURST_WINDOW_MINUTES = 1
+
 PRIVILEGED_USERS = {
     "admin",
     "administrator",
@@ -50,6 +53,12 @@ MITRE_CREDENTIAL_STUFFING = {
 }
 
 MITRE_MULTI_ACCOUNT_TARGETING = {
+    "technique_id": "T1110",
+    "technique_name": "Brute Force",
+    "tactic": "Credential Access"
+}
+
+MITRE_ANOMALOUS_LOGIN_BURST = {
     "technique_id": "T1110",
     "technique_name": "Brute Force",
     "tactic": "Credential Access"
@@ -513,5 +522,106 @@ def detect_multiple_account_targeting(parsed_logs):
                 })
 
                 break
+
+    return alerts
+
+
+def detect_anomalous_login_bursts(parsed_logs):
+    events_by_ip = defaultdict(list)
+    alerts = []
+
+    for log in parsed_logs:
+        ip = log["ip"]
+        user = log["user"]
+        timestamp = log["timestamp"]
+
+        if not ip or not user or not timestamp:
+            continue
+
+        events_by_ip[ip].append({
+            "event_type": log["event_type"],
+            "user": user,
+            "timestamp": timestamp
+        })
+
+    for ip, events in events_by_ip.items():
+        events.sort(
+            key=lambda item: item["timestamp"]
+        )
+
+        for start_index, start_event in enumerate(events):
+            start_time = start_event["timestamp"]
+
+            window_end = start_time + timedelta(
+                minutes=ANOMALOUS_LOGIN_BURST_WINDOW_MINUTES
+            )
+
+            events_in_window = [
+                event
+                for event in events[start_index:]
+                if event["timestamp"] <= window_end
+            ]
+
+            if (
+                len(events_in_window)
+                < ANOMALOUS_LOGIN_BURST_THRESHOLD
+            ):
+                continue
+
+            targeted_users = {
+                event["user"]
+                for event in events_in_window
+            }
+
+            failed_events = [
+                event
+                for event in events_in_window
+                if event["event_type"] == "FAILED"
+            ]
+
+            successful_events = [
+                event
+                for event in events_in_window
+                if event["event_type"] == "SUCCESS"
+            ]
+
+            privileged_targeted = any(
+                user.lower() in PRIVILEGED_USERS
+                for user in targeted_users
+            )
+
+            alerts.append({
+                "type": "ANOMALOUS_LOGIN_BURST",
+                "ip": ip,
+                "users": sorted(targeted_users),
+                "user_count": len(targeted_users),
+                "events": len(events_in_window),
+                "failed_attempts": len(failed_events),
+                "successful_logins": len(successful_events),
+                "start_time": start_time,
+                "end_time": events_in_window[-1]["timestamp"],
+                "severity": (
+                    "HIGH"
+                    if privileged_targeted
+                    else "MEDIUM"
+                ),
+                "mitre_technique_id": (
+                    MITRE_ANOMALOUS_LOGIN_BURST[
+                        "technique_id"
+                    ]
+                ),
+                "mitre_technique_name": (
+                    MITRE_ANOMALOUS_LOGIN_BURST[
+                        "technique_name"
+                    ]
+                ),
+                "mitre_tactic": (
+                    MITRE_ANOMALOUS_LOGIN_BURST[
+                        "tactic"
+                    ]
+                )
+            })
+
+            break
 
     return alerts
