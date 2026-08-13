@@ -1,1 +1,2 @@
-# No external dependencies required
+fastapi==0.141.1
+uvicorn==0.52.2
