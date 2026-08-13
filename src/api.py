@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .database import (
@@ -14,6 +17,15 @@ app = FastAPI(
     title="Security Log Analyzer API",
     description="REST API for the Security Log Analyzer Mini SIEM",
     version="3.0.0"
+)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+DASHBOARD_FILE = (
+    PROJECT_ROOT
+    / "dashboard"
+    / "index.html"
 )
 
 
@@ -59,7 +71,20 @@ def incident_exists(incident_id):
 
 
 @app.get("/")
-def root():
+def dashboard():
+    if not DASHBOARD_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Dashboard file not found"
+        )
+
+    return FileResponse(
+        DASHBOARD_FILE
+    )
+
+
+@app.get("/api")
+def api_info():
     return {
         "message": "Security Log Analyzer API",
         "status": "running",
@@ -95,7 +120,9 @@ def get_incident(incident_id: int):
 
     for incident in incidents:
         if incident[0] == incident_id:
-            return incident_to_dict(incident)
+            return incident_to_dict(
+                incident
+            )
 
     raise HTTPException(
         status_code=404,
@@ -103,16 +130,24 @@ def get_incident(incident_id: int):
     )
 
 
-@app.get("/incidents/{incident_id}/status-history")
-def get_status_history(incident_id: int):
-    if not incident_exists(incident_id):
+@app.get(
+    "/incidents/{incident_id}/status-history"
+)
+def get_status_history(
+    incident_id: int
+):
+    if not incident_exists(
+        incident_id
+    ):
         raise HTTPException(
             status_code=404,
             detail="Incident not found"
         )
 
-    history = get_incident_status_history(
-        incident_id
+    history = (
+        get_incident_status_history(
+            incident_id
+        )
     )
 
     results = []
@@ -134,9 +169,15 @@ def get_status_history(incident_id: int):
     }
 
 
-@app.get("/incidents/{incident_id}/notes")
-def get_notes(incident_id: int):
-    if not incident_exists(incident_id):
+@app.get(
+    "/incidents/{incident_id}/notes"
+)
+def get_notes(
+    incident_id: int
+):
+    if not incident_exists(
+        incident_id
+    ):
         raise HTTPException(
             status_code=404,
             detail="Incident not found"
@@ -164,7 +205,9 @@ def get_notes(incident_id: int):
     }
 
 
-@app.post("/incidents/{incident_id}/notes")
+@app.post(
+    "/incidents/{incident_id}/notes"
+)
 def create_note(
     incident_id: int,
     note_data: IncidentNoteCreate
@@ -188,7 +231,10 @@ def create_note(
         )
 
     return {
-        "message": "Analyst note added successfully",
+        "message": (
+            "Analyst note added "
+            "successfully"
+        ),
         "incident_id": incident_id,
         "note": note_data.note.strip(),
         "analyst": (
@@ -198,7 +244,9 @@ def create_note(
     }
 
 
-@app.patch("/incidents/{incident_id}/status")
+@app.patch(
+    "/incidents/{incident_id}/status"
+)
 def change_incident_status(
     incident_id: int,
     update: IncidentStatusUpdate
@@ -223,8 +271,15 @@ def change_incident_status(
         )
 
     return {
-        "message": "Incident status updated successfully",
+        "message": (
+            "Incident status updated "
+            "successfully"
+        ),
         "incident_id": incident_id,
-        "status": update.status.strip().upper(),
+        "status": (
+            update.status
+            .strip()
+            .upper()
+        ),
         "analyst": update.analyst
     }

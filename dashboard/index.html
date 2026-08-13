@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Security Log Analyzer | Mini SIEM
+    </title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family:
+                Inter,
+                Segoe UI,
+                Arial,
+                sans-serif;
+
+            background: #0b1120;
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #111827;
+            border-bottom: 1px solid #243044;
+            padding: 22px 30px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            gap: 20px;
+        }
+
+        .brand h1 {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .brand p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            background: #172033;
+            padding: 9px 14px;
+            border-radius: 8px;
+
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        main {
+            padding: 28px;
+            max-width: 1600px;
+            margin: auto;
+        }
+
+        .stats-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(180px, 1fr)
+                );
+
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #111827;
+            border: 1px solid #243044;
+
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 13px;
+
+            margin-bottom: 10px;
+
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+        }
+
+        .panel {
+            background: #111827;
+            border: 1px solid #243044;
+
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 18px 20px;
+
+            border-bottom:
+                1px solid #243044;
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .panel-header h2 {
+            font-size: 18px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            background: #0f172a;
+            color: #e5e7eb;
+
+            border:
+                1px solid #334155;
+
+            border-radius: 7px;
+
+            padding: 9px 11px;
+
+            font-size: 14px;
+        }
+
+        input {
+            width: 220px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        .primary-button {
+            background: #1d4ed8;
+            border-color: #2563eb;
+        }
+
+        .primary-button:hover {
+            background: #2563eb;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+
+            border-collapse:
+                collapse;
+
+            min-width: 1050px;
+        }
+
+        th,
+        td {
+            text-align: left;
+
+            padding:
+                14px 16px;
+
+            border-bottom:
+                1px solid #1f2937;
+
+            font-size: 13px;
+        }
+
+        th {
+            color: #94a3b8;
+
+            background: #0f172a;
+
+            text-transform:
+                uppercase;
+
+            letter-spacing:
+                0.4px;
+
+            font-size: 12px;
+        }
+
+        tr.incident-row {
+            cursor: pointer;
+        }
+
+        tr.incident-row:hover {
+            background: #172033;
+        }
+
+        .badge {
+            display: inline-block;
+
+            padding: 5px 9px;
+
+            border-radius:
+                999px;
+
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .risk-high {
+            background:
+                rgba(
+                    239,
+                    68,
+                    68,
+                    0.18
+                );
+
+            color: #f87171;
+        }
+
+        .risk-medium {
+            background:
+                rgba(
+                    245,
+                    158,
+                    11,
+                    0.18
+                );
+
+            color: #fbbf24;
+        }
+
+        .risk-low {
+            background:
+                rgba(
+                    34,
+                    197,
+                    94,
+                    0.18
+                );
+
+            color: #4ade80;
+        }
+
+        .status-new {
+            background:
+                rgba(
+                    59,
+                    130,
+                    246,
+                    0.18
+                );
+
+            color: #60a5fa;
+        }
+
+        .status-investigating {
+            background:
+                rgba(
+                    245,
+                    158,
+                    11,
+                    0.18
+                );
+
+            color: #fbbf24;
+        }
+
+        .status-resolved {
+            background:
+                rgba(
+                    34,
+                    197,
+                    94,
+                    0.18
+                );
+
+            color: #4ade80;
+        }
+
+        .status-false-positive {
+            background:
+                rgba(
+                    148,
+                    163,
+                    184,
+                    0.18
+                );
+
+            color: #cbd5e1;
+        }
+
+        .mitre {
+            color: #a78bfa;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+
+            padding: 40px;
+
+            color: #94a3b8;
+        }
+
+        .error-box {
+            display: none;
+
+            margin-bottom:
+                20px;
+
+            padding: 14px;
+
+            border:
+                1px solid #7f1d1d;
+
+            background:
+                rgba(
+                    127,
+                    29,
+                    29,
+                    0.25
+                );
+
+            color: #fca5a5;
+
+            border-radius: 8px;
+        }
+
+        .success-box {
+            display: none;
+
+            margin-bottom:
+                20px;
+
+            padding: 14px;
+
+            border:
+                1px solid #166534;
+
+            background:
+                rgba(
+                    22,
+                    101,
+                    52,
+                    0.25
+                );
+
+            color: #86efac;
+
+            border-radius: 8px;
+        }
+
+        .detail-panel {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .detail-content {
+            padding: 20px;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(
+                        250px,
+                        1fr
+                    )
+                );
+
+            gap: 18px;
+        }
+
+        .detail-item {
+            background: #0f172a;
+
+            border:
+                1px solid #243044;
+
+            border-radius: 8px;
+
+            padding: 14px;
+        }
+
+        .detail-item strong {
+            display: block;
+
+            color: #94a3b8;
+
+            font-size: 12px;
+
+            margin-bottom: 7px;
+
+            text-transform:
+                uppercase;
+        }
+
+        .detail-item span {
+            word-break:
+                break-word;
+
+            line-height: 1.5;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .management-grid {
+            padding: 20px;
+
+            border-top:
+                1px solid #243044;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    2,
+                    minmax(0, 1fr)
+                );
+
+            gap: 20px;
+        }
+
+        .management-card {
+            background: #0f172a;
+
+            border:
+                1px solid #243044;
+
+            border-radius: 10px;
+
+            padding: 18px;
+        }
+
+        .management-card h3 {
+            margin-bottom:
+                16px;
+
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom:
+                12px;
+        }
+
+        .form-group label {
+            display: block;
+
+            color: #94a3b8;
+
+            font-size: 12px;
+
+            margin-bottom:
+                6px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+        }
+
+        .history-section {
+            padding: 20px;
+
+            border-top:
+                1px solid #243044;
+        }
+
+        .history-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    2,
+                    minmax(0, 1fr)
+                );
+
+            gap: 20px;
+        }
+
+        .history-card {
+            background: #0f172a;
+
+            border:
+                1px solid #243044;
+
+            border-radius: 10px;
+
+            overflow: hidden;
+        }
+
+        .history-card h3 {
+            padding: 16px;
+
+            border-bottom:
+                1px solid #243044;
+
+            font-size: 16px;
+        }
+
+        .history-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .history-entry {
+            padding: 14px 16px;
+
+            border-bottom:
+                1px solid #1f2937;
+        }
+
+        .history-entry:last-child {
+            border-bottom: none;
+        }
+
+        .history-entry-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .history-entry-meta {
+            color: #94a3b8;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+        }
+
+        .history-empty {
+            color: #94a3b8;
+            padding: 18px;
+        }
+
+        footer {
+            padding: 25px;
+
+            text-align: center;
+
+            color: #64748b;
+
+            font-size: 12px;
+        }
+
+        @media (
+            max-width: 900px
+        ) {
+            .management-grid,
+            .history-grid {
+                grid-template-columns:
+                    1fr;
+            }
+        }
+
+        @media (
+            max-width: 700px
+        ) {
+            header {
+                flex-direction:
+                    column;
+
+                align-items:
+                    flex-start;
+            }
+
+            main {
+                padding: 16px;
+            }
+
+            input {
+                width: 100%;
+            }
+
+            .controls {
+                width: 100%;
+            }
+
+            .controls > * {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <div class="brand">
+        <h1>
+            Security Log Analyzer
+        </h1>
+
+        <p>
+            Mini SIEM Security Operations Dashboard
+        </p>
+    </div>
+
+    <div class="api-status">
+
+        <span
+            id="statusDot"
+            class="status-dot"
+        ></span>
+
+        <span id="apiStatus">
+            Checking API...
+        </span>
+
+    </div>
+
+</header>
+
+
+<main>
+
+    <div
+        id="errorBox"
+        class="error-box"
+    ></div>
+
+    <div
+        id="successBox"
+        class="success-box"
+    ></div>
+
+
+    <section class="stats-grid">
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                Total Incidents
+            </div>
+
+            <div
+                id="totalIncidents"
+                class="stat-value"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                High Risk
+            </div>
+
+            <div
+                id="highRisk"
+                class="stat-value"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                Investigating
+            </div>
+
+            <div
+                id="investigating"
+                class="stat-value"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                New Incidents
+            </div>
+
+            <div
+                id="newIncidents"
+                class="stat-value"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                Resolved
+            </div>
+
+            <div
+                id="resolved"
+                class="stat-value"
+            >
+                0
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <h2>
+                Security Incidents
+            </h2>
+
+            <div class="controls">
+
+                <input
+                    id="searchInput"
+                    type="text"
+                    placeholder="Search IP, detection..."
+                >
+
+                <select id="riskFilter">
+
+                    <option value="">
+                        All Risks
+                    </option>
+
+                    <option value="HIGH">
+                        High
+                    </option>
+
+                    <option value="MEDIUM">
+                        Medium
+                    </option>
+
+                    <option value="LOW">
+                        Low
+                    </option>
+
+                </select>
+
+
+                <select id="statusFilter">
+
+                    <option value="">
+                        All Statuses
+                    </option>
+
+                    <option value="NEW">
+                        New
+                    </option>
+
+                    <option value="INVESTIGATING">
+                        Investigating
+                    </option>
+
+                    <option value="RESOLVED">
+                        Resolved
+                    </option>
+
+                    <option value="FALSE_POSITIVE">
+                        False Positive
+                    </option>
+
+                </select>
+
+
+                <button id="refreshButton">
+                    Refresh
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>ID</th>
+                        <th>IP Address</th>
+                        <th>Risk</th>
+                        <th>Status</th>
+                        <th>Detection</th>
+                        <th>MITRE</th>
+                        <th>Failed</th>
+                        <th>Users</th>
+                        <th>Created</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="incidentTableBody">
+
+                    <tr>
+
+                        <td
+                            colspan="9"
+                            class="empty-state"
+                        >
+                            Loading incidents...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <section
+        id="detailPanel"
+        class="panel detail-panel"
+    >
+
+        <div class="panel-header">
+
+            <h2 id="detailTitle">
+                Incident Details
+            </h2>
+
+            <button id="closeDetails">
+                Close
+            </button>
+
+        </div>
+
+
+        <div
+            id="detailContent"
+            class="detail-content"
+        ></div>
+
+
+        <div class="management-grid">
+
+            <div class="management-card">
+
+                <h3>
+                    Update Incident Status
+                </h3>
+
+                <div class="form-group">
+
+                    <label for="analystName">
+                        Analyst
+                    </label>
+
+                    <input
+                        id="analystName"
+                        type="text"
+                        value="Stelios"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="statusUpdate">
+                        New Status
+                    </label>
+
+                    <select id="statusUpdate">
+
+                        <option value="NEW">
+                            NEW
+                        </option>
+
+                        <option value="INVESTIGATING">
+                            INVESTIGATING
+                        </option>
+
+                        <option value="RESOLVED">
+                            RESOLVED
+                        </option>
+
+                        <option value="FALSE_POSITIVE">
+                            FALSE_POSITIVE
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button
+                    id="updateStatusButton"
+                    class="primary-button"
+                >
+                    Update Status
+                </button>
+
+            </div>
+
+
+            <div class="management-card">
+
+                <h3>
+                    Add Analyst Note
+                </h3>
+
+                <div class="form-group">
+
+                    <label for="noteText">
+                        Note
+                    </label>
+
+                    <textarea
+                        id="noteText"
+                        placeholder="Enter analyst investigation note..."
+                    ></textarea>
+
+                </div>
+
+
+                <button
+                    id="addNoteButton"
+                    class="primary-button"
+                >
+                    Add Note
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="history-section">
+
+            <div class="history-grid">
+
+                <div class="history-card">
+
+                    <h3>
+                        Status History
+                    </h3>
+
+                    <div
+                        id="statusHistory"
+                        class="history-list"
+                    >
+                        <div class="history-empty">
+                            Loading...
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="history-card">
+
+                    <h3>
+                        Analyst Notes
+                    </h3>
+
+                    <div
+                        id="analystNotes"
+                        class="history-list"
+                    >
+                        <div class="history-empty">
+                            Loading...
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<footer>
+    Security Log Analyzer v3.0 — Mini SIEM
+</footer>
+
+
+<script>
+
+    let allIncidents = [];
+
+    let selectedIncidentId = null;
+
+
+    async function checkHealth() {
+
+        const statusText =
+            document.getElementById(
+                "apiStatus"
+            );
+
+        const statusDot =
+            document.getElementById(
+                "statusDot"
+            );
+
+        try {
+
+            const response =
+                await fetch(
+                    "/health"
+                );
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "API health check failed"
+                );
+            }
+
+            statusText.textContent =
+                "API Online";
+
+            statusDot.style.background =
+                "#22c55e";
+
+        }
+        catch (error) {
+
+            statusText.textContent =
+                "API Offline";
+
+            statusDot.style.background =
+                "#ef4444";
+
+        }
+    }
+
+
+    async function loadIncidents() {
+
+        hideError();
+
+        const tableBody =
+            document.getElementById(
+                "incidentTableBody"
+            );
+
+        tableBody.innerHTML = `
+            <tr>
+                <td
+                    colspan="9"
+                    class="empty-state"
+                >
+                    Loading incidents...
+                </td>
+            </tr>
+        `;
+
+        try {
+
+            const response =
+                await fetch(
+                    "/incidents"
+                );
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Failed to load incidents"
+                );
+            }
+
+            const data =
+                await response.json();
+
+            allIncidents =
+                data.incidents || [];
+
+            updateStatistics();
+
+            applyFilters();
+
+        }
+        catch (error) {
+
+            showError(
+                "Unable to load incidents from the API."
+            );
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="9"
+                        class="empty-state"
+                    >
+                        No incident data available.
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+
+    function updateStatistics() {
+
+        const total =
+            allIncidents.length;
+
+        const high =
+            allIncidents.filter(
+                incident =>
+                    incident.risk_level ===
+                    "HIGH"
+            ).length;
+
+        const investigating =
+            allIncidents.filter(
+                incident =>
+                    incident.status ===
+                    "INVESTIGATING"
+            ).length;
+
+        const newCount =
+            allIncidents.filter(
+                incident =>
+                    incident.status ===
+                    "NEW"
+            ).length;
+
+        const resolved =
+            allIncidents.filter(
+                incident =>
+                    incident.status ===
+                    "RESOLVED"
+            ).length;
+
+
+        document.getElementById(
+            "totalIncidents"
+        ).textContent =
+            total;
+
+
+        document.getElementById(
+            "highRisk"
+        ).textContent =
+            high;
+
+
+        document.getElementById(
+            "investigating"
+        ).textContent =
+            investigating;
+
+
+        document.getElementById(
+            "newIncidents"
+        ).textContent =
+            newCount;
+
+
+        document.getElementById(
+            "resolved"
+        ).textContent =
+            resolved;
+    }
+
+
+    function applyFilters() {
+
+        const searchValue =
+            document.getElementById(
+                "searchInput"
+            )
+            .value
+            .trim()
+            .toLowerCase();
+
+
+        const riskValue =
+            document.getElementById(
+                "riskFilter"
+            ).value;
+
+
+        const statusValue =
+            document.getElementById(
+                "statusFilter"
+            ).value;
+
+
+        const filtered =
+            allIncidents.filter(
+                incident => {
+
+                    const searchableText = `
+                        ${incident.id}
+                        ${incident.ip_address || ""}
+                        ${incident.detection_type || ""}
+                        ${incident.alert || ""}
+                        ${incident.targeted_users || ""}
+                        ${incident.mitre_technique_id || ""}
+                    `.toLowerCase();
+
+
+                    const matchesSearch =
+                        searchableText.includes(
+                            searchValue
+                        );
+
+
+                    const matchesRisk =
+                        !riskValue ||
+                        incident.risk_level ===
+                        riskValue;
+
+
+                    const matchesStatus =
+                        !statusValue ||
+                        incident.status ===
+                        statusValue;
+
+
+                    return (
+                        matchesSearch &&
+                        matchesRisk &&
+                        matchesStatus
+                    );
+                }
+            );
+
+
+        renderIncidents(
+            filtered
+        );
+    }
+
+
+    function renderIncidents(
+        incidents
+    ) {
+
+        const tableBody =
+            document.getElementById(
+                "incidentTableBody"
+            );
+
+
+        if (!incidents.length) {
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="9"
+                        class="empty-state"
+                    >
+                        No incidents match the current filters.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        tableBody.innerHTML =
+            incidents
+                .map(
+                    incident => `
+                        <tr
+                            class="incident-row"
+                            onclick="showIncidentDetails(${incident.id})"
+                        >
+
+                            <td>
+                                #${incident.id}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                                    incident.ip_address
+                                )}
+                            </td>
+
+                            <td>
+                                ${riskBadge(
+                                    incident.risk_level
+                                )}
+                            </td>
+
+                            <td>
+                                ${statusBadge(
+                                    incident.status
+                                )}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                                    incident.detection_type ||
+                                    "N/A"
+                                )}
+                            </td>
+
+                            <td class="mitre">
+                                ${escapeHtml(
+                                    incident.mitre_technique_id ||
+                                    "N/A"
+                                )}
+                            </td>
+
+                            <td>
+                                ${incident.failed_attempts}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                                    incident.targeted_users ||
+                                    "N/A"
+                                )}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(
+                                    incident.created_at ||
+                                    "N/A"
+                                )}
+                            </td>
+
+                        </tr>
+                    `
+                )
+                .join("");
+    }
+
+
+    function riskBadge(
+        risk
+    ) {
+
+        const className =
+            risk === "HIGH"
+                ? "risk-high"
+                : risk === "MEDIUM"
+                    ? "risk-medium"
+                    : "risk-low";
+
+
+        return `
+            <span
+                class="badge ${className}"
+            >
+                ${escapeHtml(
+                    risk || "UNKNOWN"
+                )}
+            </span>
+        `;
+    }
+
+
+    function statusBadge(
+        status
+    ) {
+
+        const normalized =
+            (status || "")
+                .toLowerCase()
+                .replace(
+                    "_",
+                    "-"
+                );
+
+
+        return `
+            <span
+                class="badge status-${normalized}"
+            >
+                ${escapeHtml(
+                    status || "UNKNOWN"
+                )}
+            </span>
+        `;
+    }
+
+
+    async function showIncidentDetails(
+        incidentId
+    ) {
+
+        selectedIncidentId =
+            incidentId;
+
+
+        const incident =
+            allIncidents.find(
+                item =>
+                    item.id ===
+                    incidentId
+            );
+
+
+        if (!incident) {
+
+            return;
+        }
+
+
+        document.getElementById(
+            "detailTitle"
+        ).textContent =
+            `Incident #${incident.id}`;
+
+
+        document.getElementById(
+            "statusUpdate"
+        ).value =
+            incident.status;
+
+
+        const content =
+            document.getElementById(
+                "detailContent"
+            );
+
+
+        content.innerHTML = `
+
+            ${detailItem(
+                "IP Address",
+                incident.ip_address
+            )}
+
+            ${detailItem(
+                "Risk Level",
+                incident.risk_level
+            )}
+
+            ${detailItem(
+                "Status",
+                incident.status
+            )}
+
+            ${detailItem(
+                "Failed Attempts",
+                incident.failed_attempts
+            )}
+
+            ${detailItem(
+                "Targeted Users",
+                incident.targeted_users
+            )}
+
+            ${detailItem(
+                "Detection Type",
+                incident.detection_type
+            )}
+
+            ${detailItem(
+                "MITRE Technique",
+                `${incident.mitre_technique_id || "N/A"} - ${incident.mitre_technique_name || "N/A"}`
+            )}
+
+            ${detailItem(
+                "MITRE Tactic",
+                incident.mitre_tactic
+            )}
+
+            ${detailItem(
+                "Event Start",
+                incident.event_start
+            )}
+
+            ${detailItem(
+                "Event End",
+                incident.event_end
+            )}
+
+            ${detailItem(
+                "Created",
+                incident.created_at
+            )}
+
+            ${detailItem(
+                "Updated",
+                incident.updated_at
+            )}
+
+            ${detailItem(
+                "Alert",
+                incident.alert,
+                true
+            )}
+
+            ${detailItem(
+                "Incident Fingerprint",
+                incident.incident_fingerprint,
+                true
+            )}
+        `;
+
+
+        const detailPanel =
+            document.getElementById(
+                "detailPanel"
+            );
+
+
+        detailPanel.style.display =
+            "block";
+
+
+        await Promise.all([
+            loadStatusHistory(
+                incidentId
+            ),
+            loadAnalystNotes(
+                incidentId
+            )
+        ]);
+
+
+        detailPanel.scrollIntoView({
+            behavior: "smooth"
+        });
+    }
+
+
+    async function loadStatusHistory(
+        incidentId
+    ) {
+
+        const container =
+            document.getElementById(
+                "statusHistory"
+            );
+
+
+        container.innerHTML = `
+            <div class="history-empty">
+                Loading...
+            </div>
+        `;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/incidents/${incidentId}/status-history`
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Unable to load status history"
+                );
+            }
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                !data.status_history ||
+                data.status_history.length === 0
+            ) {
+
+                container.innerHTML = `
+                    <div class="history-empty">
+                        No status history yet.
+                    </div>
+                `;
+
+                return;
+            }
+
+
+            container.innerHTML =
+                data.status_history
+                    .map(
+                        entry => `
+                            <div class="history-entry">
+
+                                <div class="history-entry-title">
+                                    ${escapeHtml(
+                                        entry.old_status
+                                    )}
+                                    →
+                                    ${escapeHtml(
+                                        entry.new_status
+                                    )}
+                                </div>
+
+                                <div class="history-entry-meta">
+                                    Analyst:
+                                    ${escapeHtml(
+                                        entry.analyst
+                                    )}
+                                    <br>
+
+                                    Changed:
+                                    ${escapeHtml(
+                                        entry.changed_at
+                                    )}
+                                </div>
+
+                            </div>
+                        `
+                    )
+                    .join("");
+
+        }
+        catch (error) {
+
+            container.innerHTML = `
+                <div class="history-empty">
+                    Unable to load status history.
+                </div>
+            `;
+        }
+    }
+
+
+    async function loadAnalystNotes(
+        incidentId
+    ) {
+
+        const container =
+            document.getElementById(
+                "analystNotes"
+            );
+
+
+        container.innerHTML = `
+            <div class="history-empty">
+                Loading...
+            </div>
+        `;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/incidents/${incidentId}/notes`
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Unable to load analyst notes"
+                );
+            }
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                !data.notes ||
+                data.notes.length === 0
+            ) {
+
+                container.innerHTML = `
+                    <div class="history-empty">
+                        No analyst notes yet.
+                    </div>
+                `;
+
+                return;
+            }
+
+
+            container.innerHTML =
+                data.notes
+                    .map(
+                        entry => `
+                            <div class="history-entry">
+
+                                <div class="history-entry-title">
+                                    ${escapeHtml(
+                                        entry.note
+                                    )}
+                                </div>
+
+                                <div class="history-entry-meta">
+                                    Analyst:
+                                    ${escapeHtml(
+                                        entry.analyst
+                                    )}
+                                    <br>
+
+                                    Created:
+                                    ${escapeHtml(
+                                        entry.created_at
+                                    )}
+                                </div>
+
+                            </div>
+                        `
+                    )
+                    .join("");
+
+        }
+        catch (error) {
+
+            container.innerHTML = `
+                <div class="history-empty">
+                    Unable to load analyst notes.
+                </div>
+            `;
+        }
+    }
+
+
+    async function updateSelectedIncidentStatus() {
+
+        if (
+            selectedIncidentId ===
+            null
+        ) {
+
+            return;
+        }
+
+
+        hideMessages();
+
+
+        const analyst =
+            document.getElementById(
+                "analystName"
+            )
+            .value
+            .trim() ||
+            "system";
+
+
+        const status =
+            document.getElementById(
+                "statusUpdate"
+            ).value;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/incidents/${selectedIncidentId}/status`,
+                    {
+                        method:
+                            "PATCH",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                status:
+                                    status,
+
+                                analyst:
+                                    analyst
+                            })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Unable to update incident status"
+                );
+            }
+
+
+            showSuccess(
+                "Incident status updated successfully."
+            );
+
+
+            await loadIncidents();
+
+
+            await showIncidentDetails(
+                selectedIncidentId
+            );
+
+        }
+        catch (error) {
+
+            showError(
+                error.message
+            );
+        }
+    }
+
+
+    async function addSelectedIncidentNote() {
+
+        if (
+            selectedIncidentId ===
+            null
+        ) {
+
+            return;
+        }
+
+
+        hideMessages();
+
+
+        const note =
+            document.getElementById(
+                "noteText"
+            )
+            .value
+            .trim();
+
+
+        const analyst =
+            document.getElementById(
+                "analystName"
+            )
+            .value
+            .trim() ||
+            "system";
+
+
+        if (!note) {
+
+            showError(
+                "Analyst note cannot be empty."
+            );
+
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/incidents/${selectedIncidentId}/notes`,
+                    {
+                        method:
+                            "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                note:
+                                    note,
+
+                                analyst:
+                                    analyst
+                            })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Unable to add analyst note"
+                );
+            }
+
+
+            document.getElementById(
+                "noteText"
+            ).value = "";
+
+
+            showSuccess(
+                "Analyst note added successfully."
+            );
+
+
+            await loadIncidents();
+
+
+            await showIncidentDetails(
+                selectedIncidentId
+            );
+
+        }
+        catch (error) {
+
+            showError(
+                error.message
+            );
+        }
+    }
+
+
+    function detailItem(
+        label,
+        value,
+        fullWidth = false
+    ) {
+
+        return `
+            <div
+                class="detail-item ${fullWidth ? "full-width" : ""}"
+            >
+
+                <strong>
+                    ${escapeHtml(
+                        label
+                    )}
+                </strong>
+
+                <span>
+                    ${escapeHtml(
+                        value ?? "N/A"
+                    )}
+                </span>
+
+            </div>
+        `;
+    }
+
+
+    function escapeHtml(
+        value
+    ) {
+
+        return String(
+            value ?? ""
+        )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            "\"",
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+    }
+
+
+    function showError(
+        message
+    ) {
+
+        const errorBox =
+            document.getElementById(
+                "errorBox"
+            );
+
+
+        errorBox.textContent =
+            message;
+
+
+        errorBox.style.display =
+            "block";
+    }
+
+
+    function showSuccess(
+        message
+    ) {
+
+        const successBox =
+            document.getElementById(
+                "successBox"
+            );
+
+
+        successBox.textContent =
+            message;
+
+
+        successBox.style.display =
+            "block";
+    }
+
+
+    function hideMessages() {
+
+        document.getElementById(
+            "errorBox"
+        ).style.display =
+            "none";
+
+
+        document.getElementById(
+            "successBox"
+        ).style.display =
+            "none";
+    }
+
+
+    function hideError() {
+
+        document.getElementById(
+            "errorBox"
+        ).style.display =
+            "none";
+    }
+
+
+    document.getElementById(
+        "searchInput"
+    ).addEventListener(
+        "input",
+        applyFilters
+    );
+
+
+    document.getElementById(
+        "riskFilter"
+    ).addEventListener(
+        "change",
+        applyFilters
+    );
+
+
+    document.getElementById(
+        "statusFilter"
+    ).addEventListener(
+        "change",
+        applyFilters
+    );
+
+
+    document.getElementById(
+        "refreshButton"
+    ).addEventListener(
+        "click",
+        loadIncidents
+    );
+
+
+    document.getElementById(
+        "updateStatusButton"
+    ).addEventListener(
+        "click",
+        updateSelectedIncidentStatus
+    );
+
+
+    document.getElementById(
+        "addNoteButton"
+    ).addEventListener(
+        "click",
+        addSelectedIncidentNote
+    );
+
+
+    document.getElementById(
+        "closeDetails"
+    ).addEventListener(
+        "click",
+        () => {
+
+            document.getElementById(
+                "detailPanel"
+            ).style.display =
+                "none";
+
+
+            selectedIncidentId =
+                null;
+        }
+    );
+
+
+    checkHealth();
+
+    loadIncidents();
+
+</script>
+
+</body>
+
+</html>
