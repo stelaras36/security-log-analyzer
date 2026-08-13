@@ -6,7 +6,8 @@ from detector import (
     BRUTE_FORCE_WINDOW_MINUTES,
     SUCCESS_AFTER_FAILURES_WINDOW_MINUTES,
     PASSWORD_SPRAY_WINDOW_MINUTES,
-    CREDENTIAL_STUFFING_WINDOW_MINUTES
+    CREDENTIAL_STUFFING_WINDOW_MINUTES,
+    MULTI_ACCOUNT_TARGET_WINDOW_MINUTES
 )
 
 
@@ -140,6 +141,35 @@ def print_credential_stuffing_alerts(alerts):
             f"{alert['successful_logins']} successful logins: "
             f"{successful_users} -> "
             f"within {CREDENTIAL_STUFFING_WINDOW_MINUTES} minutes -> "
+            f"Severity: {alert['severity']} -> "
+            f"MITRE ATT&CK: "
+            f"{alert['mitre_technique_id']} "
+            f"({alert['mitre_technique_name']}) -> "
+            f"Tactic: {alert['mitre_tactic']}"
+        )
+
+
+def print_multiple_account_targeting_alerts(alerts):
+    print()
+    print("Multiple-account targeting detection alerts:")
+
+    if not alerts:
+        print(
+            "No multiple-account targeting detected."
+        )
+        return
+
+    for alert in alerts:
+        users = ", ".join(
+            alert["users"]
+        )
+
+        print(
+            f"{alert['ip']} -> "
+            f"{alert['user_count']} targeted users: "
+            f"{users} -> "
+            f"{alert['attempts']} failed attempts within "
+            f"{MULTI_ACCOUNT_TARGET_WINDOW_MINUTES} minutes -> "
             f"Severity: {alert['severity']} -> "
             f"MITRE ATT&CK: "
             f"{alert['mitre_technique_id']} "

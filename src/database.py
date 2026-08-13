@@ -188,6 +188,7 @@ def save_incidents(
     brute_force_alerts,
     password_spray_alerts,
     credential_stuffing_alerts,
+    multiple_account_targeting_alerts,
     calculate_risk
 ):
     connection = create_connection()
@@ -324,6 +325,43 @@ def save_incidents(
                     f"{alert['failed_attempts']} failed attempts, "
                     f"{alert['successful_logins']} successful logins "
                     f"across {alert['user_count']} users "
+                    f"within 10 minutes"
+                )
+            )
+
+            add_unique_value(
+                detection_types,
+                alert["type"]
+            )
+
+            add_unique_value(
+                mitre_ids,
+                alert["mitre_technique_id"]
+            )
+
+            add_unique_value(
+                mitre_names,
+                alert["mitre_technique_name"]
+            )
+
+            add_unique_value(
+                mitre_tactics,
+                alert["mitre_tactic"]
+            )
+
+            if alert["severity"] == "HIGH":
+                risk = "HIGH"
+
+        for alert in multiple_account_targeting_alerts:
+            if alert["ip"] != ip:
+                continue
+
+            add_unique_value(
+                alert_messages,
+                (
+                    f"Multiple-account targeting detected: "
+                    f"{alert['user_count']} targeted users "
+                    f"with {alert['attempts']} failed attempts "
                     f"within 10 minutes"
                 )
             )

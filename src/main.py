@@ -7,6 +7,7 @@ from detector import (
     detect_brute_force_attempts,
     detect_password_spraying,
     detect_credential_stuffing,
+    detect_multiple_account_targeting,
     calculate_risk
 )
 
@@ -16,6 +17,7 @@ from reporter import (
     print_brute_force_alerts,
     print_password_spray_alerts,
     print_credential_stuffing_alerts,
+    print_multiple_account_targeting_alerts,
     generate_csv_report
 )
 
@@ -168,6 +170,12 @@ def main():
         parsed_logs
     )
 
+    multiple_account_targeting_alerts = (
+        detect_multiple_account_targeting(
+            parsed_logs
+        )
+    )
+
     failed_logins_count = sum(
         1
         for log in parsed_logs
@@ -207,6 +215,10 @@ def main():
         credential_stuffing_alerts
     )
 
+    print_multiple_account_targeting_alerts(
+        multiple_account_targeting_alerts
+    )
+
     generate_csv_report(
         ip_counter,
         targeted_users,
@@ -220,6 +232,7 @@ def main():
         brute_force_alerts,
         password_spray_alerts,
         credential_stuffing_alerts,
+        multiple_account_targeting_alerts,
         calculate_risk
     )
 

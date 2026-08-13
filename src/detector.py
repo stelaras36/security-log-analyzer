@@ -15,6 +15,9 @@ CREDENTIAL_STUFFING_USER_THRESHOLD = 3
 CREDENTIAL_STUFFING_FAILURE_THRESHOLD = 5
 CREDENTIAL_STUFFING_WINDOW_MINUTES = 10
 
+MULTI_ACCOUNT_TARGET_USER_THRESHOLD = 3
+MULTI_ACCOUNT_TARGET_WINDOW_MINUTES = 10
+
 PRIVILEGED_USERS = {
     "admin",
     "administrator",
@@ -43,6 +46,12 @@ MITRE_PASSWORD_SPRAYING = {
 MITRE_CREDENTIAL_STUFFING = {
     "technique_id": "T1110.004",
     "technique_name": "Credential Stuffing",
+    "tactic": "Credential Access"
+}
+
+MITRE_MULTI_ACCOUNT_TARGETING = {
+    "technique_id": "T1110",
+    "technique_name": "Brute Force",
     "tactic": "Credential Access"
 }
 
@@ -411,6 +420,93 @@ def detect_credential_stuffing(parsed_logs):
                     ),
                     "mitre_tactic": (
                         MITRE_CREDENTIAL_STUFFING[
+                            "tactic"
+                        ]
+                    )
+                })
+
+                break
+
+    return alerts
+
+
+def detect_multiple_account_targeting(parsed_logs):
+    failed_attempts_by_ip = defaultdict(list)
+    alerts = []
+
+    for log in parsed_logs:
+        if log["event_type"] != "FAILED":
+            continue
+
+        ip = log["ip"]
+        user = log["user"]
+        timestamp = log["timestamp"]
+
+        if not ip or not user or not timestamp:
+            continue
+
+        failed_attempts_by_ip[ip].append({
+            "user": user,
+            "timestamp": timestamp
+        })
+
+    for ip, attempts in failed_attempts_by_ip.items():
+        attempts.sort(
+            key=lambda item: item["timestamp"]
+        )
+
+        for start_index, start_attempt in enumerate(attempts):
+            start_time = start_attempt["timestamp"]
+
+            window_end = start_time + timedelta(
+                minutes=MULTI_ACCOUNT_TARGET_WINDOW_MINUTES
+            )
+
+            attempts_in_window = [
+                attempt
+                for attempt in attempts[start_index:]
+                if attempt["timestamp"] <= window_end
+            ]
+
+            targeted_users = {
+                attempt["user"]
+                for attempt in attempts_in_window
+            }
+
+            if (
+                len(targeted_users)
+                >= MULTI_ACCOUNT_TARGET_USER_THRESHOLD
+            ):
+                privileged_targeted = any(
+                    user.lower() in PRIVILEGED_USERS
+                    for user in targeted_users
+                )
+
+                alerts.append({
+                    "type": "MULTI_ACCOUNT_TARGETING",
+                    "ip": ip,
+                    "users": sorted(targeted_users),
+                    "user_count": len(targeted_users),
+                    "attempts": len(attempts_in_window),
+                    "start_time": start_time,
+                    "end_time": attempts_in_window[-1]["timestamp"],
+                    "severity": (
+                        "HIGH"
+                        if privileged_targeted
+                        else "MEDIUM"
+                    ),
+                    "mitre_technique_id": (
+                        MITRE_MULTI_ACCOUNT_TARGETING[
+                            "technique_id"
+                        ]
+                    ),
+                    "mitre_technique_name": (
+                        MITRE_MULTI_ACCOUNT_TARGETING[
+                            "technique_name"
+                        ]
+                    ),
+                    "mitre_tactic": (
+                        MITRE_MULTI_ACCOUNT_TARGETING[
                             "tactic"
                         ]
                     )
