@@ -1,5 +1,9 @@
-IP Address,Failed Attempts,Targeted Users,Risk Level,Alert
-192.168.1.20,3,admin,MEDIUM,Possible successful brute-force
-172.16.0.8,5,root,HIGH,
-10.10.10.50,4,"admin, paraskeuas, support, xaritini",MEDIUM,
-203.0.113.50,5,"alice, bob, carol",HIGH,
+Detection Type,IP Address,Users,User Count,Failed Attempts,Successful Logins,Event Count,Severity,Alert,MITRE Technique ID,MITRE Technique Name,MITRE Tactic,Event Start,Event End
+SUCCESS_AFTER_FAILURES,192.168.1.20,admin,1,3,1,4,HIGH,Possible successful brute-force,T1110,Brute Force,Credential Access,2026-07-05 10:21:11,2026-07-05 10:22:01
+BRUTE_FORCE,172.16.0.8,root,1,5,0,5,HIGH,Brute-force detected: 5 failed attempts within 5 minutes,T1110,Brute Force,Credential Access,2026-07-05 10:24:12,2026-07-05 10:24:55
+PASSWORD_SPRAYING,10.10.10.50,"admin, paraskeuas, support, xaritini",4,4,0,4,HIGH,Password spraying detected: 4 targeted users within 5 minutes,T1110.003,Password Spraying,Credential Access,2026-07-05 10:30:00,2026-07-05 10:30:30
+CREDENTIAL_STUFFING,203.0.113.50,"alice, bob, carol",3,5,1,6,MEDIUM,"Credential stuffing detected: 5 failed attempts, 1 successful login(s) across 3 users within 10 minutes",T1110.004,Credential Stuffing,Credential Access,2026-07-05 10:35:00,2026-07-05 10:36:00
+MULTI_ACCOUNT_TARGETING,10.10.10.50,"admin, paraskeuas, support, xaritini",4,4,0,4,HIGH,Multiple-account targeting detected: 4 targeted users with 4 failed attempts within 10 minutes,T1110,Brute Force,Credential Access,2026-07-05 10:30:00,2026-07-05 10:30:30
+MULTI_ACCOUNT_TARGETING,203.0.113.50,"alice, bob, carol",3,5,0,5,MEDIUM,Multiple-account targeting detected: 3 targeted users with 5 failed attempts within 10 minutes,T1110,Brute Force,Credential Access,2026-07-05 10:35:00,2026-07-05 10:35:40
+ANOMALOUS_LOGIN_BURST,172.16.0.8,root,1,5,0,5,HIGH,Anomalous login burst detected: 5 login events within 1 minute(s),T1110,Brute Force,Credential Access,2026-07-05 10:24:12,2026-07-05 10:24:55
+ANOMALOUS_LOGIN_BURST,203.0.113.50,"alice, bob, carol",3,5,1,6,MEDIUM,Anomalous login burst detected: 6 login events within 1 minute(s),T1110,Brute Force,Credential Access,2026-07-05 10:35:00,2026-07-05 10:36:00

@@ -139,7 +139,7 @@ def print_credential_stuffing_alerts(alerts):
             f"{alert['user_count']} targeted users: "
             f"{users} -> "
             f"{alert['failed_attempts']} failed attempts -> "
-            f"{alert['successful_logins']} successful logins: "
+            f"{alert['successful_logins']} successful login(s): "
             f"{successful_users} -> "
             f"within {CREDENTIAL_STUFFING_WINDOW_MINUTES} minutes -> "
             f"Severity: {alert['severity']} -> "
@@ -209,15 +209,66 @@ def print_anomalous_login_burst_alerts(alerts):
         )
 
 
+def format_timestamp(timestamp):
+    if timestamp is None:
+        return ""
+
+    return timestamp.strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+
+def write_detection_row(
+    writer,
+    detection_type,
+    ip,
+    users,
+    user_count,
+    failed_attempts,
+    successful_logins,
+    event_count,
+    severity,
+    alert_text,
+    mitre_technique_id,
+    mitre_technique_name,
+    mitre_tactic,
+    event_start,
+    event_end
+):
+    writer.writerow([
+        detection_type,
+        ip,
+        users,
+        user_count,
+        failed_attempts,
+        successful_logins,
+        event_count,
+        severity,
+        alert_text,
+        mitre_technique_id,
+        mitre_technique_name,
+        mitre_tactic,
+        format_timestamp(event_start),
+        format_timestamp(event_end)
+    ])
+
+
 def generate_csv_report(
     ip_counter,
     targeted_users,
-    success_alerts
+    success_alerts,
+    brute_force_alerts,
+    password_spray_alerts,
+    credential_stuffing_alerts,
+    multiple_account_targeting_alerts,
+    anomalous_login_burst_alerts
 ):
     os.makedirs(
         "reports",
         exist_ok=True
     )
+
+    detected_ips = set()
 
     with open(
         REPORT_FILE,
@@ -230,34 +281,238 @@ def generate_csv_report(
         )
 
         writer.writerow([
+            "Detection Type",
             "IP Address",
+            "Users",
+            "User Count",
             "Failed Attempts",
-            "Targeted Users",
-            "Risk Level",
-            "Alert"
+            "Successful Logins",
+            "Event Count",
+            "Severity",
+            "Alert",
+            "MITRE Technique ID",
+            "MITRE Technique Name",
+            "MITRE Tactic",
+            "Event Start",
+            "Event End"
         ])
+
+        for alert in success_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                alert["user"],
+                1,
+                alert["failed_attempts_before_success"],
+                1,
+                (
+                    alert["failed_attempts_before_success"]
+                    + 1
+                ),
+                alert["severity"],
+                alert["alert"],
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["success_time"]
+            )
+
+        for alert in brute_force_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                alert["user"],
+                1,
+                alert["attempts"],
+                0,
+                alert["attempts"],
+                alert["severity"],
+                (
+                    f"Brute-force detected: "
+                    f"{alert['attempts']} failed attempts "
+                    f"within {BRUTE_FORCE_WINDOW_MINUTES} minutes"
+                ),
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["end_time"]
+            )
+
+        for alert in password_spray_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            users = ", ".join(
+                alert["users"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                users,
+                alert["user_count"],
+                alert["attempts"],
+                0,
+                alert["attempts"],
+                alert["severity"],
+                (
+                    f"Password spraying detected: "
+                    f"{alert['user_count']} targeted users "
+                    f"within {PASSWORD_SPRAY_WINDOW_MINUTES} minutes"
+                ),
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["end_time"]
+            )
+
+        for alert in credential_stuffing_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            users = ", ".join(
+                alert["users"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                users,
+                alert["user_count"],
+                alert["failed_attempts"],
+                alert["successful_logins"],
+                (
+                    alert["failed_attempts"]
+                    + alert["successful_logins"]
+                ),
+                alert["severity"],
+                (
+                    f"Credential stuffing detected: "
+                    f"{alert['failed_attempts']} failed attempts, "
+                    f"{alert['successful_logins']} successful login(s) "
+                    f"across {alert['user_count']} users "
+                    f"within {CREDENTIAL_STUFFING_WINDOW_MINUTES} minutes"
+                ),
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["end_time"]
+            )
+
+        for alert in multiple_account_targeting_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            users = ", ".join(
+                alert["users"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                users,
+                alert["user_count"],
+                alert["attempts"],
+                0,
+                alert["attempts"],
+                alert["severity"],
+                (
+                    f"Multiple-account targeting detected: "
+                    f"{alert['user_count']} targeted users "
+                    f"with {alert['attempts']} failed attempts "
+                    f"within {MULTI_ACCOUNT_TARGET_WINDOW_MINUTES} minutes"
+                ),
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["end_time"]
+            )
+
+        for alert in anomalous_login_burst_alerts:
+            detected_ips.add(
+                alert["ip"]
+            )
+
+            users = ", ".join(
+                alert["users"]
+            )
+
+            write_detection_row(
+                writer,
+                alert["type"],
+                alert["ip"],
+                users,
+                alert["user_count"],
+                alert["failed_attempts"],
+                alert["successful_logins"],
+                alert["events"],
+                alert["severity"],
+                (
+                    f"Anomalous login burst detected: "
+                    f"{alert['events']} login events "
+                    f"within "
+                    f"{ANOMALOUS_LOGIN_BURST_WINDOW_MINUTES} minute(s)"
+                ),
+                alert["mitre_technique_id"],
+                alert["mitre_technique_name"],
+                alert["mitre_tactic"],
+                alert["start_time"],
+                alert["end_time"]
+            )
 
         for ip, attempts in ip_counter.items():
             risk = calculate_risk(
                 attempts
             )
 
-            if risk in {"MEDIUM", "HIGH"}:
-                users = ", ".join(
-                    sorted(targeted_users[ip])
-                )
+            if (
+                risk not in {"MEDIUM", "HIGH"}
+                or ip in detected_ips
+            ):
+                continue
 
-                alert_text = ""
+            users = ", ".join(
+                sorted(targeted_users[ip])
+            )
 
-                for alert in success_alerts:
-                    if alert["ip"] == ip:
-                        alert_text = alert["alert"]
-                        break
-
-                writer.writerow([
-                    ip,
-                    attempts,
-                    users,
-                    risk,
-                    alert_text
-                ])
+            write_detection_row(
+                writer,
+                "SUSPICIOUS_IP_SUMMARY",
+                ip,
+                users,
+                len(targeted_users[ip]),
+                attempts,
+                0,
+                attempts,
+                risk,
+                (
+                    "Suspicious failed login activity "
+                    "without advanced detection match"
+                ),
+                "",
+                "",
+                "",
+                None,
+                None
+            )

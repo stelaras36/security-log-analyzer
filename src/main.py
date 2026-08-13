@@ -234,7 +234,12 @@ def main():
     generate_csv_report(
         ip_counter,
         targeted_users,
-        success_alerts
+        success_alerts,
+        brute_force_alerts,
+        password_spray_alerts,
+        credential_stuffing_alerts,
+        multiple_account_targeting_alerts,
+        anomalous_login_burst_alerts
     )
 
     save_incidents(
