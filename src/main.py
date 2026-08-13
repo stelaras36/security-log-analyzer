@@ -45,7 +45,9 @@ def print_saved_incidents(incidents):
         mitre_technique_name = incident[8]
         mitre_tactic = incident[9]
         status = incident[10]
-        created_at = incident[11]
+        analyst_notes = incident[11]
+        updated_at = incident[12]
+        created_at = incident[13]
 
         print(
             f"{incident_id} | "
@@ -59,7 +61,9 @@ def print_saved_incidents(incidents):
             f"MITRE: {mitre_technique_id or 'N/A'} "
             f"({mitre_technique_name or 'N/A'}) | "
             f"Tactic: {mitre_tactic or 'N/A'} | "
-            f"{created_at}"
+            f"Analyst Notes: {analyst_notes or 'N/A'} | "
+            f"Updated: {updated_at or 'N/A'} | "
+            f"Created: {created_at}"
         )
 
 

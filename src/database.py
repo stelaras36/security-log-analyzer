@@ -34,6 +34,8 @@ def create_incidents_table():
             mitre_technique_name TEXT,
             mitre_tactic TEXT,
             status TEXT NOT NULL DEFAULT 'NEW',
+            analyst_notes TEXT DEFAULT '',
+            updated_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -50,7 +52,9 @@ def create_incidents_table():
         "mitre_technique_id": "TEXT",
         "mitre_technique_name": "TEXT",
         "mitre_tactic": "TEXT",
-        "status": "TEXT NOT NULL DEFAULT 'NEW'"
+        "status": "TEXT NOT NULL DEFAULT 'NEW'",
+        "analyst_notes": "TEXT DEFAULT ''",
+        "updated_at": "TIMESTAMP"
     }
 
     for column_name, column_definition in new_columns.items():
@@ -69,6 +73,7 @@ def clear_incidents():
     cursor = connection.cursor()
 
     cursor.execute("DELETE FROM incidents")
+
     cursor.execute(
         "DELETE FROM sqlite_sequence "
         "WHERE name = 'incidents'"
@@ -122,7 +127,9 @@ def save_incidents(
         if risk not in {"MEDIUM", "HIGH"}:
             continue
 
-        users = ", ".join(sorted(targeted_users[ip]))
+        users = ", ".join(
+            sorted(targeted_users[ip])
+        )
 
         alert_messages = []
         detection_types = []
@@ -209,11 +216,25 @@ def save_incidents(
             if alert["severity"] == "HIGH":
                 risk = "HIGH"
 
-        alert_text = " | ".join(alert_messages)
-        detection_type = " | ".join(detection_types)
-        mitre_technique_id = " | ".join(mitre_ids)
-        mitre_technique_name = " | ".join(mitre_names)
-        mitre_tactic = " | ".join(mitre_tactics)
+        alert_text = " | ".join(
+            alert_messages
+        )
+
+        detection_type = " | ".join(
+            detection_types
+        )
+
+        mitre_technique_id = " | ".join(
+            mitre_ids
+        )
+
+        mitre_technique_name = " | ".join(
+            mitre_names
+        )
+
+        mitre_tactic = " | ".join(
+            mitre_tactics
+        )
 
         if incident_exists(
             cursor,
@@ -271,6 +292,8 @@ def get_all_incidents():
             mitre_technique_name,
             mitre_tactic,
             status,
+            analyst_notes,
+            updated_at,
             created_at
         FROM incidents
         ORDER BY id ASC
@@ -283,8 +306,13 @@ def get_all_incidents():
     return incidents
 
 
-def update_incident_status(incident_id, new_status):
-    normalized_status = new_status.strip().upper()
+def update_incident_status(
+    incident_id,
+    new_status
+):
+    normalized_status = (
+        new_status.strip().upper()
+    )
 
     if normalized_status not in VALID_INCIDENT_STATUSES:
         raise ValueError(
@@ -296,10 +324,36 @@ def update_incident_status(incident_id, new_status):
 
     cursor.execute("""
         UPDATE incidents
-        SET status = ?
+        SET status = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     """, (
         normalized_status,
+        incident_id
+    ))
+
+    incident_found = cursor.rowcount > 0
+
+    connection.commit()
+    connection.close()
+
+    return incident_found
+
+
+def update_incident_notes(
+    incident_id,
+    notes
+):
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE incidents
+        SET analyst_notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (
+        notes.strip(),
         incident_id
     ))
 
