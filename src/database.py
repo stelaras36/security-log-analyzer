@@ -187,6 +187,7 @@ def save_incidents(
     success_alerts,
     brute_force_alerts,
     password_spray_alerts,
+    credential_stuffing_alerts,
     calculate_risk
 ):
     connection = create_connection()
@@ -261,6 +262,44 @@ def save_incidents(
                     f"Password spraying detected: "
                     f"{alert['user_count']} targeted users "
                     f"within 5 minutes"
+                )
+            )
+
+            add_unique_value(
+                detection_types,
+                alert["type"]
+            )
+
+            add_unique_value(
+                mitre_ids,
+                alert["mitre_technique_id"]
+            )
+
+            add_unique_value(
+                mitre_names,
+                alert["mitre_technique_name"]
+            )
+
+            add_unique_value(
+                mitre_tactics,
+                alert["mitre_tactic"]
+            )
+
+            if alert["severity"] == "HIGH":
+                risk = "HIGH"
+
+        for alert in credential_stuffing_alerts:
+            if alert["ip"] != ip:
+                continue
+
+            add_unique_value(
+                alert_messages,
+                (
+                    f"Credential stuffing detected: "
+                    f"{alert['failed_attempts']} failed attempts, "
+                    f"{alert['successful_logins']} successful logins "
+                    f"across {alert['user_count']} users "
+                    f"within 10 minutes"
                 )
             )
 

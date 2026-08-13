@@ -8,6 +8,10 @@ BRUTE_FORCE_WINDOW_MINUTES = 5
 PASSWORD_SPRAY_USER_THRESHOLD = 4
 PASSWORD_SPRAY_WINDOW_MINUTES = 5
 
+CREDENTIAL_STUFFING_USER_THRESHOLD = 3
+CREDENTIAL_STUFFING_FAILURE_THRESHOLD = 5
+CREDENTIAL_STUFFING_WINDOW_MINUTES = 10
+
 PRIVILEGED_USERS = {
     "admin",
     "administrator",
@@ -23,6 +27,12 @@ MITRE_BRUTE_FORCE = {
 MITRE_PASSWORD_SPRAYING = {
     "technique_id": "T1110.003",
     "technique_name": "Password Spraying",
+    "tactic": "Credential Access"
+}
+
+MITRE_CREDENTIAL_STUFFING = {
+    "technique_id": "T1110.004",
+    "technique_name": "Credential Stuffing",
     "tactic": "Credential Access"
 }
 
@@ -167,7 +177,9 @@ def detect_password_spraying(parsed_logs):
         })
 
     for ip, attempts in failed_attempts_by_ip.items():
-        attempts.sort(key=lambda item: item["timestamp"])
+        attempts.sort(
+            key=lambda item: item["timestamp"]
+        )
 
         for start_index, start_attempt in enumerate(attempts):
             start_time = start_attempt["timestamp"]
@@ -212,8 +224,117 @@ def detect_password_spraying(parsed_logs):
                     "mitre_technique_name": (
                         MITRE_PASSWORD_SPRAYING["technique_name"]
                     ),
-                    "mitre_tactic": MITRE_PASSWORD_SPRAYING["tactic"]
+                    "mitre_tactic": (
+                        MITRE_PASSWORD_SPRAYING["tactic"]
+                    )
                 })
+                break
+
+    return alerts
+
+
+def detect_credential_stuffing(parsed_logs):
+    events_by_ip = defaultdict(list)
+    alerts = []
+
+    for log in parsed_logs:
+        ip = log["ip"]
+        user = log["user"]
+        timestamp = log["timestamp"]
+
+        if not ip or not user or not timestamp:
+            continue
+
+        events_by_ip[ip].append({
+            "event_type": log["event_type"],
+            "user": user,
+            "timestamp": timestamp
+        })
+
+    for ip, events in events_by_ip.items():
+        events.sort(
+            key=lambda item: item["timestamp"]
+        )
+
+        for start_index, start_event in enumerate(events):
+            start_time = start_event["timestamp"]
+
+            window_end = start_time + timedelta(
+                minutes=CREDENTIAL_STUFFING_WINDOW_MINUTES
+            )
+
+            events_in_window = [
+                event
+                for event in events[start_index:]
+                if event["timestamp"] <= window_end
+            ]
+
+            failed_events = [
+                event
+                for event in events_in_window
+                if event["event_type"] == "FAILED"
+            ]
+
+            successful_events = [
+                event
+                for event in events_in_window
+                if event["event_type"] == "SUCCESS"
+            ]
+
+            targeted_users = {
+                event["user"]
+                for event in events_in_window
+            }
+
+            if (
+                len(targeted_users)
+                >= CREDENTIAL_STUFFING_USER_THRESHOLD
+                and len(failed_events)
+                >= CREDENTIAL_STUFFING_FAILURE_THRESHOLD
+                and len(successful_events) >= 1
+            ):
+                successful_users = sorted({
+                    event["user"]
+                    for event in successful_events
+                })
+
+                privileged_targeted = any(
+                    user.lower() in PRIVILEGED_USERS
+                    for user in targeted_users
+                )
+
+                alerts.append({
+                    "type": "CREDENTIAL_STUFFING",
+                    "ip": ip,
+                    "users": sorted(targeted_users),
+                    "successful_users": successful_users,
+                    "user_count": len(targeted_users),
+                    "failed_attempts": len(failed_events),
+                    "successful_logins": len(successful_events),
+                    "start_time": start_time,
+                    "end_time": events_in_window[-1]["timestamp"],
+                    "severity": (
+                        "HIGH"
+                        if privileged_targeted
+                        else "MEDIUM"
+                    ),
+                    "mitre_technique_id": (
+                        MITRE_CREDENTIAL_STUFFING[
+                            "technique_id"
+                        ]
+                    ),
+                    "mitre_technique_name": (
+                        MITRE_CREDENTIAL_STUFFING[
+                            "technique_name"
+                        ]
+                    ),
+                    "mitre_tactic": (
+                        MITRE_CREDENTIAL_STUFFING[
+                            "tactic"
+                        ]
+                    )
+                })
+
                 break
 
     return alerts
