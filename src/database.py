@@ -68,6 +68,26 @@ def create_incidents_table():
     connection.close()
 
 
+def create_incident_status_history_table():
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS incident_status_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            incident_id INTEGER NOT NULL,
+            old_status TEXT,
+            new_status TEXT NOT NULL,
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (incident_id)
+                REFERENCES incidents(id)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
 def clear_incidents():
     connection = create_connection()
     cursor = connection.cursor()
@@ -323,6 +343,26 @@ def update_incident_status(
     cursor = connection.cursor()
 
     cursor.execute("""
+        SELECT status
+        FROM incidents
+        WHERE id = ?
+    """, (
+        incident_id,
+    ))
+
+    result = cursor.fetchone()
+
+    if result is None:
+        connection.close()
+        return False
+
+    old_status = result[0]
+
+    if old_status == normalized_status:
+        connection.close()
+        return True
+
+    cursor.execute("""
         UPDATE incidents
         SET status = ?,
             updated_at = CURRENT_TIMESTAMP
@@ -332,12 +372,23 @@ def update_incident_status(
         incident_id
     ))
 
-    incident_found = cursor.rowcount > 0
+    cursor.execute("""
+        INSERT INTO incident_status_history (
+            incident_id,
+            old_status,
+            new_status
+        )
+        VALUES (?, ?, ?)
+    """, (
+        incident_id,
+        old_status,
+        normalized_status
+    ))
 
     connection.commit()
     connection.close()
 
-    return incident_found
+    return True
 
 
 def update_incident_notes(
@@ -363,3 +414,28 @@ def update_incident_notes(
     connection.close()
 
     return incident_found
+
+
+def get_incident_status_history(incident_id):
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            incident_id,
+            old_status,
+            new_status,
+            changed_at
+        FROM incident_status_history
+        WHERE incident_id = ?
+        ORDER BY id ASC
+    """, (
+        incident_id,
+    ))
+
+    history = cursor.fetchall()
+
+    connection.close()
+
+    return history

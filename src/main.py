@@ -19,10 +19,35 @@ from reporter import (
 
 from database import (
     create_incidents_table,
+    create_incident_status_history_table,
     save_incidents,
     get_all_incidents,
+    get_incident_status_history,
     update_incident_status
 )
+
+
+def print_incident_status_history(incident_id):
+    history = get_incident_status_history(
+        incident_id
+    )
+
+    if not history:
+        print("    Status History: N/A")
+        return
+
+    print("    Status History:")
+
+    for history_entry in history:
+        old_status = history_entry[2]
+        new_status = history_entry[3]
+        changed_at = history_entry[4]
+
+        print(
+            f"      {old_status} -> "
+            f"{new_status} | "
+            f"{changed_at}"
+        )
 
 
 def print_saved_incidents(incidents):
@@ -66,6 +91,10 @@ def print_saved_incidents(incidents):
             f"Created: {created_at}"
         )
 
+        print_incident_status_history(
+            incident_id
+        )
+
 
 def main():
     print("Security Log Analyzer")
@@ -73,16 +102,30 @@ def main():
     print("Reading log file: logs/auth.log")
 
     create_incidents_table()
+    create_incident_status_history_table()
 
     logs = read_log_file()
     parsed_logs = parse_logs(logs)
 
-    ip_counter = count_failed_attempts_by_ip(parsed_logs)
-    targeted_users = get_targeted_users_by_ip(parsed_logs)
+    ip_counter = count_failed_attempts_by_ip(
+        parsed_logs
+    )
 
-    success_alerts = detect_success_after_failures(parsed_logs)
-    brute_force_alerts = detect_brute_force_attempts(parsed_logs)
-    password_spray_alerts = detect_password_spraying(parsed_logs)
+    targeted_users = get_targeted_users_by_ip(
+        parsed_logs
+    )
+
+    success_alerts = detect_success_after_failures(
+        parsed_logs
+    )
+
+    brute_force_alerts = detect_brute_force_attempts(
+        parsed_logs
+    )
+
+    password_spray_alerts = detect_password_spraying(
+        parsed_logs
+    )
 
     failed_logins_count = sum(
         1
@@ -90,8 +133,16 @@ def main():
         if log["event_type"] == "FAILED"
     )
 
-    print(f"Total log lines found: {len(logs)}")
-    print(f"Failed login attempts found: {failed_logins_count}")
+    print(
+        f"Total log lines found: "
+        f"{len(logs)}"
+    )
+
+    print(
+        f"Failed login attempts found: "
+        f"{failed_logins_count}"
+    )
+
     print()
 
     print_suspicious_ips(
@@ -127,13 +178,18 @@ def main():
     )
 
     incidents = get_all_incidents()
-    print_saved_incidents(incidents)
+
+    print_saved_incidents(
+        incidents
+    )
 
     print()
+
     print(
         "CSV report generated: "
         "reports/suspicious_report.csv"
     )
+
     print(
         "Incidents saved to SQLite database: "
         "security_logs.db"
