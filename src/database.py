@@ -1,3 +1,4 @@
+import hashlib
 import sqlite3
 
 
@@ -36,7 +37,10 @@ def create_incidents_table():
             status TEXT NOT NULL DEFAULT 'NEW',
             analyst_notes TEXT DEFAULT '',
             updated_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            incident_fingerprint TEXT,
+            event_start TIMESTAMP,
+            event_end TIMESTAMP
         )
     """)
 
@@ -54,7 +58,10 @@ def create_incidents_table():
         "mitre_tactic": "TEXT",
         "status": "TEXT NOT NULL DEFAULT 'NEW'",
         "analyst_notes": "TEXT DEFAULT ''",
-        "updated_at": "TIMESTAMP"
+        "updated_at": "TIMESTAMP",
+        "incident_fingerprint": "TEXT",
+        "event_start": "TIMESTAMP",
+        "event_end": "TIMESTAMP"
     }
 
     for column_name, column_definition in new_columns.items():
@@ -159,23 +166,69 @@ def add_unique_value(values, value):
         values.append(value)
 
 
-def incident_exists(
-    cursor,
+def add_event_times(
+    start_times,
+    end_times,
+    alert
+):
+    start_time = alert.get("start_time")
+
+    end_time = (
+        alert.get("end_time")
+        or alert.get("success_time")
+        or start_time
+    )
+
+    if start_time:
+        start_times.append(start_time)
+
+    if end_time:
+        end_times.append(end_time)
+
+
+def build_incident_fingerprint(
     ip_address,
     detection_type,
-    alert_text
+    alert_text,
+    event_start,
+    event_end
+):
+    event_start_text = (
+        event_start.isoformat()
+        if event_start
+        else ""
+    )
+
+    event_end_text = (
+        event_end.isoformat()
+        if event_end
+        else ""
+    )
+
+    fingerprint_source = "|".join([
+        ip_address or "",
+        detection_type or "",
+        alert_text or "",
+        event_start_text,
+        event_end_text
+    ])
+
+    return hashlib.sha256(
+        fingerprint_source.encode("utf-8")
+    ).hexdigest()
+
+
+def incident_exists(
+    cursor,
+    incident_fingerprint
 ):
     cursor.execute("""
         SELECT id
         FROM incidents
-        WHERE ip_address = ?
-          AND COALESCE(detection_type, '') = ?
-          AND COALESCE(alert, '') = ?
+        WHERE incident_fingerprint = ?
         LIMIT 1
     """, (
-        ip_address,
-        detection_type,
-        alert_text
+        incident_fingerprint,
     ))
 
     return cursor.fetchone() is not None
@@ -211,6 +264,9 @@ def save_incidents(
         mitre_names = []
         mitre_tactics = []
 
+        event_start_times = []
+        event_end_times = []
+
         for alert in success_alerts:
             if alert["ip"] != ip:
                 continue
@@ -238,6 +294,12 @@ def save_incidents(
             add_unique_value(
                 mitre_tactics,
                 alert["mitre_tactic"]
+            )
+
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
             )
 
             if alert["severity"] == "HIGH":
@@ -276,6 +338,12 @@ def save_incidents(
                 alert["mitre_tactic"]
             )
 
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
+            )
+
             if alert["severity"] == "HIGH":
                 risk = "HIGH"
 
@@ -310,6 +378,12 @@ def save_incidents(
             add_unique_value(
                 mitre_tactics,
                 alert["mitre_tactic"]
+            )
+
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
             )
 
             if alert["severity"] == "HIGH":
@@ -350,6 +424,12 @@ def save_incidents(
                 alert["mitre_tactic"]
             )
 
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
+            )
+
             if alert["severity"] == "HIGH":
                 risk = "HIGH"
 
@@ -385,6 +465,12 @@ def save_incidents(
             add_unique_value(
                 mitre_tactics,
                 alert["mitre_tactic"]
+            )
+
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
             )
 
             if alert["severity"] == "HIGH":
@@ -425,6 +511,12 @@ def save_incidents(
                 alert["mitre_tactic"]
             )
 
+            add_event_times(
+                event_start_times,
+                event_end_times,
+                alert
+            )
+
             if alert["severity"] == "HIGH":
                 risk = "HIGH"
 
@@ -448,11 +540,29 @@ def save_incidents(
             mitre_tactics
         )
 
-        if incident_exists(
-            cursor,
+        event_start = (
+            min(event_start_times)
+            if event_start_times
+            else None
+        )
+
+        event_end = (
+            max(event_end_times)
+            if event_end_times
+            else None
+        )
+
+        incident_fingerprint = build_incident_fingerprint(
             ip,
             detection_type,
-            alert_text
+            alert_text,
+            event_start,
+            event_end
+        )
+
+        if incident_exists(
+            cursor,
+            incident_fingerprint
         ):
             continue
 
@@ -467,9 +577,12 @@ def save_incidents(
                 mitre_technique_id,
                 mitre_technique_name,
                 mitre_tactic,
-                status
+                status,
+                incident_fingerprint,
+                event_start,
+                event_end
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             ip,
             attempts,
@@ -480,7 +593,10 @@ def save_incidents(
             mitre_technique_id,
             mitre_technique_name,
             mitre_tactic,
-            DEFAULT_INCIDENT_STATUS
+            DEFAULT_INCIDENT_STATUS,
+            incident_fingerprint,
+            event_start,
+            event_end
         ))
 
     connection.commit()
@@ -506,7 +622,10 @@ def get_all_incidents():
             status,
             analyst_notes,
             updated_at,
-            created_at
+            created_at,
+            incident_fingerprint,
+            event_start,
+            event_end
         FROM incidents
         ORDER BY id ASC
     """)
