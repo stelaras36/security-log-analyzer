@@ -210,11 +210,36 @@ def save_incidents(
         mitre_tactics = []
 
         for alert in success_alerts:
-            if alert["ip"] == ip:
-                add_unique_value(
-                    alert_messages,
-                    alert["alert"]
-                )
+            if alert["ip"] != ip:
+                continue
+
+            add_unique_value(
+                alert_messages,
+                alert["alert"]
+            )
+
+            add_unique_value(
+                detection_types,
+                alert["type"]
+            )
+
+            add_unique_value(
+                mitre_ids,
+                alert["mitre_technique_id"]
+            )
+
+            add_unique_value(
+                mitre_names,
+                alert["mitre_technique_name"]
+            )
+
+            add_unique_value(
+                mitre_tactics,
+                alert["mitre_tactic"]
+            )
+
+            if alert["severity"] == "HIGH":
+                risk = "HIGH"
 
         for alert in brute_force_alerts:
             if alert["ip"] != ip:

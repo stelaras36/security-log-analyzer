@@ -4,6 +4,7 @@ import os
 from detector import (
     calculate_risk,
     BRUTE_FORCE_WINDOW_MINUTES,
+    SUCCESS_AFTER_FAILURES_WINDOW_MINUTES,
     PASSWORD_SPRAY_WINDOW_MINUTES,
     CREDENTIAL_STUFFING_WINDOW_MINUTES
 )
@@ -50,7 +51,13 @@ def print_success_after_failures_alerts(alerts):
             f"{alert['ip']} -> "
             f"User: {alert['user']} -> "
             f"{alert['failed_attempts_before_success']} "
-            f"failed attempts before success -> "
+            f"failed attempts before success within "
+            f"{SUCCESS_AFTER_FAILURES_WINDOW_MINUTES} minutes -> "
+            f"Severity: {alert['severity']} -> "
+            f"MITRE ATT&CK: "
+            f"{alert['mitre_technique_id']} "
+            f"({alert['mitre_technique_name']}) -> "
+            f"Tactic: {alert['mitre_tactic']} -> "
             f"{alert['alert']}"
         )
 

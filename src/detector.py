@@ -5,6 +5,9 @@ from datetime import timedelta
 BRUTE_FORCE_THRESHOLD = 5
 BRUTE_FORCE_WINDOW_MINUTES = 5
 
+SUCCESS_AFTER_FAILURES_THRESHOLD = 3
+SUCCESS_AFTER_FAILURES_WINDOW_MINUTES = 5
+
 PASSWORD_SPRAY_USER_THRESHOLD = 4
 PASSWORD_SPRAY_WINDOW_MINUTES = 5
 
@@ -18,7 +21,14 @@ PRIVILEGED_USERS = {
     "root"
 }
 
+
 MITRE_BRUTE_FORCE = {
+    "technique_id": "T1110",
+    "technique_name": "Brute Force",
+    "tactic": "Credential Access"
+}
+
+MITRE_SUCCESS_AFTER_FAILURES = {
     "technique_id": "T1110",
     "technique_name": "Brute Force",
     "tactic": "Credential Access"
@@ -74,27 +84,98 @@ def calculate_risk(attempts):
 
 
 def detect_success_after_failures(parsed_logs):
-    failed_counter = defaultdict(int)
+    failed_attempts = defaultdict(list)
     alerts = []
 
-    for log in parsed_logs:
+    valid_logs = [
+        log
+        for log in parsed_logs
+        if (
+            log["ip"]
+            and log["user"]
+            and log["timestamp"]
+        )
+    ]
+
+    valid_logs.sort(
+        key=lambda log: log["timestamp"]
+    )
+
+    for log in valid_logs:
         ip = log["ip"]
         user = log["user"]
+        timestamp = log["timestamp"]
 
-        if not ip:
-            continue
+        key = (
+            ip,
+            user
+        )
 
         if log["event_type"] == "FAILED":
-            failed_counter[ip] += 1
+            failed_attempts[key].append(
+                timestamp
+            )
+            continue
 
-        elif log["event_type"] == "SUCCESS":
-            if failed_counter[ip] >= 3:
-                alerts.append({
-                    "ip": ip,
-                    "user": user,
-                    "failed_attempts_before_success": failed_counter[ip],
-                    "alert": "Possible successful brute-force"
-                })
+        if log["event_type"] != "SUCCESS":
+            continue
+
+        window_start = (
+            timestamp
+            - timedelta(
+                minutes=SUCCESS_AFTER_FAILURES_WINDOW_MINUTES
+            )
+        )
+
+        recent_failures = [
+            failure_time
+            for failure_time in failed_attempts[key]
+            if (
+                window_start
+                <= failure_time
+                <= timestamp
+            )
+        ]
+
+        if (
+            len(recent_failures)
+            >= SUCCESS_AFTER_FAILURES_THRESHOLD
+        ):
+            alerts.append({
+                "type": "SUCCESS_AFTER_FAILURES",
+                "ip": ip,
+                "user": user,
+                "failed_attempts_before_success": (
+                    len(recent_failures)
+                ),
+                "start_time": recent_failures[0],
+                "success_time": timestamp,
+                "severity": (
+                    "HIGH"
+                    if user.lower() in PRIVILEGED_USERS
+                    else "MEDIUM"
+                ),
+                "alert": (
+                    "Possible successful brute-force"
+                ),
+                "mitre_technique_id": (
+                    MITRE_SUCCESS_AFTER_FAILURES[
+                        "technique_id"
+                    ]
+                ),
+                "mitre_technique_name": (
+                    MITRE_SUCCESS_AFTER_FAILURES[
+                        "technique_name"
+                    ]
+                ),
+                "mitre_tactic": (
+                    MITRE_SUCCESS_AFTER_FAILURES[
+                        "tactic"
+                    ]
+                )
+            })
+
+        failed_attempts[key] = []
 
     return alerts
 

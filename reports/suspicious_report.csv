@@ -2,4 +2,4 @@ IP Address,Failed Attempts,Targeted Users,Risk Level,Alert
 192.168.1.20,3,admin,MEDIUM,Possible successful brute-force
 172.16.0.8,5,root,HIGH,
 10.10.10.50,4,"admin, paraskeuas, support, xaritini",MEDIUM,
-203.0.113.50,5,"alice, bob, carol",HIGH,Possible successful brute-force
+203.0.113.50,5,"alice, bob, carol",HIGH,
