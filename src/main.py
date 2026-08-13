@@ -43,11 +43,13 @@ def print_incident_status_history(incident_id):
     for history_entry in history:
         old_status = history_entry[2]
         new_status = history_entry[3]
-        changed_at = history_entry[4]
+        analyst = history_entry[4]
+        changed_at = history_entry[5]
 
         print(
             f"      {old_status} -> "
             f"{new_status} | "
+            f"Analyst: {analyst} | "
             f"{changed_at}"
         )
 

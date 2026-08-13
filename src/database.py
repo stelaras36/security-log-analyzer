@@ -78,11 +78,27 @@ def create_incident_status_history_table():
             incident_id INTEGER NOT NULL,
             old_status TEXT,
             new_status TEXT NOT NULL,
+            analyst TEXT NOT NULL DEFAULT 'system',
             changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (incident_id)
                 REFERENCES incidents(id)
         )
     """)
+
+    cursor.execute(
+        "PRAGMA table_info(incident_status_history)"
+    )
+
+    existing_columns = {
+        column[1]
+        for column in cursor.fetchall()
+    }
+
+    if "analyst" not in existing_columns:
+        cursor.execute("""
+            ALTER TABLE incident_status_history
+            ADD COLUMN analyst TEXT NOT NULL DEFAULT 'system'
+        """)
 
     connection.commit()
     connection.close()
@@ -347,11 +363,17 @@ def get_all_incidents():
 
 def update_incident_status(
     incident_id,
-    new_status
+    new_status,
+    analyst="system"
 ):
     normalized_status = (
         new_status.strip().upper()
     )
+
+    analyst_name = analyst.strip()
+
+    if not analyst_name:
+        analyst_name = "system"
 
     if normalized_status not in VALID_INCIDENT_STATUSES:
         raise ValueError(
@@ -395,13 +417,15 @@ def update_incident_status(
         INSERT INTO incident_status_history (
             incident_id,
             old_status,
-            new_status
+            new_status,
+            analyst
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?)
     """, (
         incident_id,
         old_status,
-        normalized_status
+        normalized_status,
+        analyst_name
     ))
 
     connection.commit()
@@ -445,6 +469,7 @@ def get_incident_status_history(incident_id):
             incident_id,
             old_status,
             new_status,
+            analyst,
             changed_at
         FROM incident_status_history
         WHERE incident_id = ?
