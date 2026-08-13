@@ -20,9 +20,11 @@ from reporter import (
 from database import (
     create_incidents_table,
     create_incident_status_history_table,
+    create_incident_notes_table,
     save_incidents,
     get_all_incidents,
     get_incident_status_history,
+    get_incident_notes,
     update_incident_status
 )
 
@@ -47,6 +49,29 @@ def print_incident_status_history(incident_id):
             f"      {old_status} -> "
             f"{new_status} | "
             f"{changed_at}"
+        )
+
+
+def print_incident_notes(incident_id):
+    notes = get_incident_notes(
+        incident_id
+    )
+
+    if not notes:
+        print("    Analyst Notes History: N/A")
+        return
+
+    print("    Analyst Notes History:")
+
+    for note_entry in notes:
+        note_id = note_entry[0]
+        note = note_entry[2]
+        created_at = note_entry[3]
+
+        print(
+            f"      Note #{note_id} | "
+            f"{note} | "
+            f"{created_at}"
         )
 
 
@@ -86,12 +111,17 @@ def print_saved_incidents(incidents):
             f"MITRE: {mitre_technique_id or 'N/A'} "
             f"({mitre_technique_name or 'N/A'}) | "
             f"Tactic: {mitre_tactic or 'N/A'} | "
-            f"Analyst Notes: {analyst_notes or 'N/A'} | "
+            f"Legacy Analyst Note: "
+            f"{analyst_notes or 'N/A'} | "
             f"Updated: {updated_at or 'N/A'} | "
             f"Created: {created_at}"
         )
 
         print_incident_status_history(
+            incident_id
+        )
+
+        print_incident_notes(
             incident_id
         )
 
@@ -103,6 +133,7 @@ def main():
 
     create_incidents_table()
     create_incident_status_history_table()
+    create_incident_notes_table()
 
     logs = read_log_file()
     parsed_logs = parse_logs(logs)

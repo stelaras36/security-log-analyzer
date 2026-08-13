@@ -88,6 +88,25 @@ def create_incident_status_history_table():
     connection.close()
 
 
+def create_incident_notes_table():
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS incident_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            incident_id INTEGER NOT NULL,
+            note TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (incident_id)
+                REFERENCES incidents(id)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
 def clear_incidents():
     connection = create_connection()
     cursor = connection.cursor()
@@ -439,3 +458,76 @@ def get_incident_status_history(incident_id):
     connection.close()
 
     return history
+
+
+def add_incident_note(
+    incident_id,
+    note
+):
+    cleaned_note = note.strip()
+
+    if not cleaned_note:
+        return False
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT id
+        FROM incidents
+        WHERE id = ?
+    """, (
+        incident_id,
+    ))
+
+    if cursor.fetchone() is None:
+        connection.close()
+        return False
+
+    cursor.execute("""
+        INSERT INTO incident_notes (
+            incident_id,
+            note
+        )
+        VALUES (?, ?)
+    """, (
+        incident_id,
+        cleaned_note
+    ))
+
+    cursor.execute("""
+        UPDATE incidents
+        SET updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (
+        incident_id,
+    ))
+
+    connection.commit()
+    connection.close()
+
+    return True
+
+
+def get_incident_notes(incident_id):
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            incident_id,
+            note,
+            created_at
+        FROM incident_notes
+        WHERE incident_id = ?
+        ORDER BY id ASC
+    """, (
+        incident_id,
+    ))
+
+    notes = cursor.fetchall()
+
+    connection.close()
+
+    return notes
